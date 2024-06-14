@@ -1,0 +1,141 @@
+The RUN DELTA Code aborts any other sweep running, resets the instrument, then sets up a DELTA sweep. When you see something like "<DELTAHIGH>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. The var <DELTACURRRANGE> is the current range and it can be replaced with a numeric string like " .002" (2 mA range) or with a string like ":auto on" which turns auto range on. All other variables will have a space before them. The :syst:comm:serial:send command allows communication to the Model 2182 over RS-232. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read.
+
+:sour:swe:abort
+:sour:wave:abor
+*rst
+<SETUPSTRING>
+WAIT500
+:form:elem READ,TST,RNUM,AVOL
+:sour:delt:high <DELTAHIGH>
+:sour:delt:low <DELTALOW>
+:sour:delt:count <DELTANUMCYCLE>
+:sour:delt:delay <DELTADELAY>
+:sour:curr:filt:stat <DELTADAMPING>
+:sour:curr:comp <DELTACOMP>
+:sour:curr:rang <DELTACURRRANGE>
+:SYST:COMM:SERIal:SEND "*rst"
+WAIT400
+:SYST:COMM:SERIal:SEND ":sens:volt:nplc <DELTANPLC>"
+WAIT1500
+:SYST:COMM:SERIal:SEND ":sens:volt:rang <DELTAVOLTRANGE>"
+:sens:aver:wind 0
+:sens:aver:stat <DELTAFILTERSTATE>
+:sens:aver:coun <DELTAFILTERCOUNT>
+:sens:aver:tcon <DELTAFILTERTYPE>
+:sour:delt:arm
+WAIT1000
+:init:imm
+
+The RUN DIFF COND code aborts any other sweep running, resets the instrument, then sets up a DIFF COND sweep. When you see something like "<DCONSTOP>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. We set the DCONSTEP value to (STOP-START)/((NUMPOINTS-1)*FILTERCOUNT) and the DCONDELTA (amplitude of the square wave superimposed on the sweep) is set to STEPSIZE*FILTERCOUNT. The :syst:comm:serial:send command allows communication to the Model 2182 over RS-232. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read.
+
+:sour:swe:abort
+*rst
+<SETUPSTRING>
+WAIT500
+:form:elem READ,TST,RNUM,SOUR,AVOL
+:sour:dcon:start <DCONSTART>
+:sour:dcon:stop <DCONSTOP>
+:sour:dcon:step <DCONSTEP>
+:sour:dcon:del <DCONDELAY>
+:sour:dcon:delt <DCONDELTA>
+:sour:curr:comp <DCONCOMP>
+:sour:curr:filt:stat <DCONDAMPING>
+:SYST:COMM:SERIal:SEND ":sens:volt:rang <DCONVOLTRANGE>"
+WAIT700
+:SYST:COMM:SERIal:SEND ":sens:volt:nplc <DCONNPLC>"
+WAIT500
+:sens:aver:wind 0
+:sens:aver:stat <DCONFILTERSTATE>
+:sens:aver:coun <DCONFILTERCOUNT>
+:sens:aver:tcon REPEAT
+WAIT2000
+:sour:dcon:arm
+WAIT3000
+:init:imm
+
+The RUN PULSE code aborts any other sweep running, resets the instrument, then sets up a PULSE series. When you see something like "<PULSELEVEL>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. We set the <PULSESWEEPSTATE> to a binary value 1 or 0 depending on whether we want to sweep or repeat pulses. The strings ON and OFF will also work. The <PULSESWEEPINT> variable is used to set the sweep delay. We find that the most repeatable pulses in sweep mode come when you set the delay to 6 ms less than the time that equals the number of NPLCs requested. So the formula for <PULSESWEEPINT> is (NPLC*1/Power_Line_Freq - 6)/1000. The :syst:comm:serial:send command allows communication to the Model 2182 over RS-232. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). You may find you have to place additional delays especially when using the RS-232 pass through commands. When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read.
+
+:sour:swe:abort
+WAIT3000
+*rst
+<SETUPSTRING>
+WAIT500
+:sour:del <PULSESWEEPINT>
+:form:elem READ,TST,RNUM,SOUR
+:sour:pdel:high <PULSEHIGH>
+:sour:pdel:low <PULSEOFF>
+:sour:pdel:count <PULSECOUNT>
+:sour:pdel:rang best
+:sour:swe:rang <PULSESWEEPRANGE>
+:sour:pdel:width <PULSEWIDTH>
+:sour:pdel:sdel <PULSEDELAY>
+:sour:pdel:swe <PULSESWEEPSTATE>
+:sour:pdel:lme <PULSELOWMEAS>
+:sour:pdel:int <PULSEINTERVAL>
+:sour:curr:comp <PULSECOMP>
+:sour:swe:spac <PULSESWEEPSPACING>
+:sour:curr:start <PULSESWEEPSTART>
+:sour:curr:stop <PULSESWEEPSTOP>
+:sour:curr:step <PULSESWEEPSTEP>
+:SYST:COMM:SERIal:SEND ":sens:volt:rang <PULSEVOLTRANGE>"
+:sens:aver:wind 0
+:sens:aver:stat <PULSEFILTERSTATE>
+:sens:aver:coun <PULSEFILTERCOUNT>
+:sens:aver:tcon <PULSEFILTERTYPE>
+:sour:pdel:arm
+WAIT3000
+:init:imm
+
+The UPLOAD ARB code aborts any other sweep running, turns off the output, then loads an ARB wave. When you see something like "<PULSELEVEL>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. The command sour:wave:arb1:data <WAVEFORM> will upload the waveform to the instrument. The variable needs to be replaced with a sequence of numbers between -1 and 1 separated by commas. I.E. "1,.5,0,-.5,-1". The command can only take data about 1000 bytes of ASCII or smaller at a time, so if your waveform is larger than that separate them and use the :sour:wave:arb:append <WAVEFORM> command to add more points. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read. 
+
+sour:swe:abort
+WAIT500
+SOUR:WAVE:ABOR
+WAIT500
+outp:stat off
+sour:wave:ampl <AMPLITUDE>
+sour:wave:offs <OFFSET>
+sour:wave:arb:data <WAVEFORM>
+WAIT300
+
+The RUN ARB code initiates an ARB waveform. When you see something like "<PMARK>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. DURATION is in seconds and FREQUENCY is in Hz. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read. 
+
+SOUR:WAVE:ABOR
+WAIT300
+:outp:stat off
+<SETUPSTRING>
+WAIT500
+sour:wave:arb:copy 1
+WAIT3000
+sour:wave:func ARB0
+WAIT1000
+sour:wave:rang best
+sour:wave:ampl <RUNAMPLITUDE>
+sour:wave:pmar:stat <PMARK_ENABLE>
+sour:wave:pmar <PMARK>
+:trig:olin <TRIGGERLINE+1>
+sour:wave:pmar:olin <TRIGGERLINE>
+sour:wave:freq <FREQUENCY>
+sour:wave:dur:time <DURATION>
+:sour:curr:comp <ARBCOMP>
+sour:wave:arm
+WAIT2000
+:outp:stat on
+WAIT500
+sour:wave:init
+
+The ABORT code aborts any sweep or measurements running. It can also be a good idea to turn off the output or reset the instruments to its defaults when aborting a test.
+
+:sour:swe:abort
+:outp:stat off
+
+The STOP ARB code aborts any waveform that is running, then turns off the output. 
+
+SOUR:WAVE:ABOR
+outp:stat off
+
+The DATA code queries the Model 6220/6221 for the contents of the buffer. When you see ENTER100000 this indicates you need to read data from the box. The number is the recommended number of bytes to read. This depends on how many buffer points were filled. This command selects a starting point "0" and a number of buffer points to download "<DATACOUNT>".
+
+:trac:data:sel? 0,<DATACOUNT>
+ENTER4000000
+

@@ -1,0 +1,20 @@
+The set DC source code sets a source value and enables the output . When you see something like "<SOURCE>" this is a variable. These are replaced with values before being sent to the instrument. Many are self explanatory. SOURCE is in amps, COMPLIANCE is in volts, and OUTPUT should be replaced with a 1 to turn on or a 0 to turn off.
+
+:sour:curr:rang <SOURCE>
+:sour:curr:lev <SOURCE>
+:sour:curr:comp <COMPLIANCE>
+:outp:stat <OUTPUT>
+
+The MEAS DATA code are commands sent to request data from the 2182 through the 622X. When you see WAIT1500 that indicates a delay in ms. (i.e. a 1500 ms delay between these commands). When you see ENTER256 this indicates you need to read data from the box. The number is the recommended number of bytes to read. 
+
+:SYST:COMM:SERIal:SEND ":trac:data?"
+WAIT200
+:SYST:COMM:SERIal:enter?
+ENTER255
+
+The Instrument Setup String is used in many command sets to configure the 622X as the user selects in the setup wizard. This usually sets the TRIAX configuration to guarding or normal, grounding to earth low connection or not, and may set a special command to reduce capacitance in the 2182A. See the Manual for more details.
+
+:SYST:COMM:SERIal:SEND "SYST:FFIL OFF"
+:OUTP:ISH GUAR
+:outp:lte OFF
+
