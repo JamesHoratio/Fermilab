@@ -16,7 +16,7 @@ import textwrap
 from instrcomms import Communications
 from instrgui import InstrumentOption, open_gui_return_input
 
-DEBUG_PRINT_COMMANDS = False
+DEBUG_PRINT_COMMANDS = True
 
 SAVED_PARAMETERS_FILENAME = "delta_parameters.txt"
 
