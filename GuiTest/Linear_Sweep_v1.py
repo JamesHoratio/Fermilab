@@ -26,7 +26,7 @@ def experiment_setup(instrument, parameters, start_time):
     # Linear Sweep Measurement Settings
     #high_current = float(parameters["high_current"])
     #low_current = float(parameters["low_current"])
-    #num_readings = int(parameters["num_readings"])
+    
     filter_type = int(parameters["filter_type"])
     filter_count = int(parameters["filter_count"])
     #voltage_range = float(parameters["voltage_range"])
@@ -54,8 +54,8 @@ def experiment_setup(instrument, parameters, start_time):
     pulsefilterstate = int(parameters["pulsefilterstate"])
     pulsefiltercount = int(parameters["pulsefiltercount"])
     pulsefiltertype = int(parameters["pulsefiltertype"])
-
-
+    num_readings = float()
+    num_readings = ((pulsecount) + (pulsecount * pulselowmeas))
     # Check that we have valid parameters
     invalid_parameters = False
     if pulsehighcurrent == pulselowcurrent:
@@ -88,8 +88,9 @@ def experiment_setup(instrument, parameters, start_time):
     instrument.write("SOUR:WAVE:ABOR")
 
     instrument.write("*RST")  # Reset the 6221
-    time.sleep(2)  # Wait 2 seconds
-
+    time.sleep(2) # Wait 2 seconds
+    instrument.write("SYST:COMM:SERIAL:SEND \042*RST\042")  # Reset the 2182A
+    time.sleep(3) # Wait 3 seconds
     # Use Guard?
     if guarding_on:
         instrument.write("OUTP:ISH GUARD")
@@ -105,11 +106,7 @@ def experiment_setup(instrument, parameters, start_time):
     time.sleep(0.5)
 
     
-    """instrument.write(f"SOUR:DELT:HIGH {high_current}")  # Set high current
-    time.sleep(0.1)
-    instrument.write(f"SOUR:DELT:LOW {low_current}")  # Set low current
-    instrument.write(f"SOUR:DELT:COUNT {num_readings}")  # Set num readings
-    instrument.write(f"SOUR:DELT:DEL {delay}")  # Set delay"""
+    
     instrument.write(f"SOUR:DEL {pulsesweepinterval}") # Set pulse sweep interval
     instrument.write("form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
     instrument.write(f"SOUR:CURR:COMP {volt_compliance}")  # Set voltage compliance
@@ -128,7 +125,7 @@ def experiment_setup(instrument, parameters, start_time):
     instrument.write(f"sour:curr:start {pulsesweepstart}")  # Set pulse sweep start
     instrument.write(f"sour:curr:stop {pulsesweepstop}")  # Set pulse sweep stop
     instrument.write(f"sour:curr:step {pulsesweepstep}")  # Set pulse sweep step
-    instrument.write(f"SYST:COMM:SERIal:SEND :sens:volt:rang {pulsevoltagerange}") # Set voltage measure range
+    instrument.write(f"SYST:COMM:SERIal:SEND \042:sens:volt:rang {pulsevoltagerange}\042") # Set voltage measure range
     instrument.write(f"sens:aver:wind 0")  # Set averaging window
     instrument.write(f"sens:aver:stat {pulsefilterstate}")  # Set filter state
     instrument.write(f"sens:aver:count {pulsefiltercount}")  # Set filter count
