@@ -339,10 +339,6 @@ def main():
             "10",
             tooltip="Voltage compliance must be in range [0.1, 105]",
         ),
-        InstrumentOption(
-            "Start Pulse Sweep Interval",
-
-        ),
 
         InstrumentOption("Use Guard", "guarding_on", False, True),
         InstrumentOption("Use Low to Earth", "lowToEarth_on", False, True),
