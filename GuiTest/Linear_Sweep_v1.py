@@ -31,11 +31,11 @@ def experiment_setup(instrument, parameters, start_time):
     filter_count = int(parameters["filter_count"])
     #voltage_range = float(parameters["voltage_range"])
     #delay = float(parameters["delay"])
-    #integration_nplcs = float(parameters["integration_NPLCs"])
+    integration_nplcs = float(parameters["integration_NPLCs"])
     volt_compliance = float(parameters["volt_compliance"])
     guarding_on = parameters["guarding_on"]
     low_to_earth_on = parameters["lowToEarth_on"]
-    pulsesweepinterval = float(parameters["pulsesweepinterval"])
+    sweepdelay = float(parameters["sweepdelay"]) # The <PULSESWEEPINT> variable is used to set the sweep delay. We find that the most repeatable pulses in sweep mode come when you set the delay to 6 ms less than the time that equals the number of NPLCs requested. So the formula for <PULSESWEEPINT> is (NPLC*1/Power_Line_Freq - 6)/1000. The :syst:comm:serial:send command allows communication to the Model 2182 over RS-232.
     pulsehighcurrent = float(parameters["pulsehighcurrent"])
     pulselowcurrent = float(parameters["pulselowcurrent"])
     pulsecount = int(parameters["pulsecount"])
@@ -54,9 +54,18 @@ def experiment_setup(instrument, parameters, start_time):
     pulsefilterstate = int(parameters["pulsefilterstate"])
     pulsefiltercount = int(parameters["pulsefiltercount"])
     pulsefiltertype = int(parameters["pulsefiltertype"])
-    num_readings = float()
-    num_readings = ((pulsecount) + (pulsecount * pulselowmeas))
+    #num_readings = int((pulsecount) + (pulsecount * pulselowmeas))
     # Check that we have valid parameters
+
+    query2182Apresent = int(instrument.write("sour:pdel:nvpresent?"))
+    if query2182Apresent == 0:
+        print("2182A not present")
+        instrument.disconnect()
+        stop_time = time.time()  # Stop the timer...
+        print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
+        exit()
+
+
     invalid_parameters = False
     if pulsehighcurrent == pulselowcurrent:
         print("High and low current cannot be the same")
@@ -76,6 +85,7 @@ def experiment_setup(instrument, parameters, start_time):
     if volt_compliance < 0.1 or volt_compliance > 105:
         print("Voltage compliance must be in range [0.1, 105]")
         invalid_parameters = True
+    
 
     if invalid_parameters:
         instrument.disconnect()
@@ -105,9 +115,9 @@ def experiment_setup(instrument, parameters, start_time):
 
     time.sleep(0.5)
 
+    sweepdelay = ((pulsecount * 1/50 - 6)/1000)
     
-    
-    instrument.write(f"SOUR:DEL {pulsesweepinterval}") # Set pulse sweep interval
+    instrument.write(f"SOUR:DEL {sweepdelay}") # Set delay between pulses
     instrument.write("form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
     instrument.write(f"SOUR:CURR:COMP {volt_compliance}")  # Set voltage compliance
     instrument.write(f"sour:pdel:high {pulsehighcurrent}")  # Set high current
@@ -118,9 +128,9 @@ def experiment_setup(instrument, parameters, start_time):
     instrument.write(f"sour:pdel:width {pulsewidth}")  # Set pulse width
     instrument.write(f"sour:pdel:sdel {pulsedelay}")  # Set pulse delay
     instrument.write(f"sour:pdel:swe {pulsesweepstate}")  # Set pulse sweep state
-    instrument.write(f"sour:pdel:lme {pulselowmeas}")  # Set low measurement state
+    instrument.write(f"sour:pdel:lme {pulselowmeas}")  # Set # of low measurements
     instrument.write(f"sour:pdel:int {pulseinterval}")  # Set pulse interval
-    instrument.write(f"sour:pdel:comp {pulsecompliance}")  # Set pulse compliance
+    instrument.write(f"sour:curr:comp {pulsecompliance}")  # Set pulse compliance
     instrument.write(f"sour:swe:spac {pulsesweepspacing}")  # Set pulse sweep spacing
     instrument.write(f"sour:curr:start {pulsesweepstart}")  # Set pulse sweep start
     instrument.write(f"sour:curr:stop {pulsesweepstop}")  # Set pulse sweep stop
@@ -132,26 +142,12 @@ def experiment_setup(instrument, parameters, start_time):
     instrument.write(f"sens:aver:tcon {pulsefiltertype}")  # Set filter type
     ##instrument.write(f"sour:pdel:arm")  # Arm the pulse sweep
     ##instrument.write(f"init:imm")  # Start the pulse sweep
-
-    time.sleep(0.5)
-
-    
-    """if abs(high_current) > abs(low_current):  # Set current range
-        instrument.write(f"SOUR:CURR:RANG {high_current}")
-    else:
-        instrument.write(f"SOUR:CURR:RANG {low_current}")
-    instrument.write("SYST:COMM:SERIAL:SEND \042*RST\042")  # Reset the 2182A
-    time.sleep(3)
     instrument.write(
         f"SYST:COMM:SERIAL:SEND \042:SENS:VOLT:NPLC {integration_nplcs}\042"
     )  # Set NPLC for 2182A
-    time.sleep(2)
-    instrument.write(
-        f"SYST:COMM:SERIAL:SEND \042:SENS:VOLT:RANG {voltage_range}\042"
-    )  # Set voltage measure range
-    cmd = "SENS:AVER:WIND 0"  # Set averaging window
-    instrument.write(cmd)
-    time.sleep(0.5)"""
+    time.sleep(0.5)
+
+    # Set the filter type
 
     if filter_type == 0:
         instrument.write("SENS:AVER:TCON MOV")
@@ -199,7 +195,7 @@ def read_data(instrument, num_readings: int):
     return data
 
 
-def write_csv(data, delta_current: float, csv_path: str):
+def write_csv(data, csv_path: str):
     """Write data to csv file"""
     # Create and open file
     with open(csv_path, "a+", encoding="utf-8") as csv_file:
@@ -214,9 +210,9 @@ def write_csv(data, delta_current: float, csv_path: str):
             time_stamp = data[i + 1]
             source_current = data[i + 2]
             reading_number = data[i + 3]
-            resistance = float(v_reading) / delta_current
+            #resistance = float(v_reading) / delta_current
             csv_file.write(
-                f"{v_reading}, {time_stamp}, {source_current}, {reading_number}, {resistance:.8f}\n"
+                f"{v_reading}, {time_stamp}, {source_current}, {reading_number}\n"
             )
             csv_file.flush()
 
@@ -263,7 +259,6 @@ def main():
             "Pulse Sweep Step",
             "pulsesweepstep",
             "0.001",
-
         ),
         InstrumentOption(
             "Number of Pulses",
@@ -274,8 +269,8 @@ def main():
         InstrumentOption(
             "Pulse Sweep Range",
             "pulsesweeprange",
-            "0.01",
-            tooltip="Range of the pulse sweep",
+            "best",
+            tooltip="Best or Auto range for the pulse sweep",
         ),
         InstrumentOption(
             "Pulse Width",
@@ -293,13 +288,13 @@ def main():
             "Pulse Low Measurement",
             "pulselowmeas",
             "0",
-            tooltip="0 = Off, 1 = On",
+            tooltip="Set number of low measurements. NRf = 1 or 2",
         ),
         InstrumentOption(
-            "Pulse Interval (msec)",
+            "Pulse Interval (sec)",
             "pulseinterval",
-            "0.1",
-            tooltip="Interval between pulses (msec) (pulse duty cycle = pulse / (interval between pulses + pulse width))",
+            "0.5",
+            tooltip="Interval between pulses (pulse duty cycle = pulse / (interval between pulses + pulse width))",
         ),
         InstrumentOption(
             "Pulse Compliance",
@@ -308,10 +303,10 @@ def main():
             tooltip="Voltage compliance must be in range [0.1, 105]",
         ),
         InstrumentOption(
-            "Pulse Delay (msec)",
+            "Pulse Delay",
             "pulsedelay",
             "0.5",
-            tooltip="Pulse settle time (msec) delay between current source change and measurement trigger.",
+            tooltip="Pulse settle time delay between current source change and measurement trigger.",
         ),
         InstrumentOption(
             "Filter Type",
@@ -337,12 +332,16 @@ def main():
             tooltip="Valid Voltage Ranges: 0.01, 0.1, 1, 10 or 100",
         ),
 
-        #InstrumentOption("Integration NPLCs", "integration_NPLCs", "5"),
+        InstrumentOption("Integration NPLCs", "integration_NPLCs", "5"),
         InstrumentOption(
             "Voltage Compliance",
             "volt_compliance",
             "10",
             tooltip="Voltage compliance must be in range [0.1, 105]",
+        ),
+        InstrumentOption(
+            "Start Pulse Sweep Interval",
+
         ),
 
         InstrumentOption("Use Guard", "guarding_on", False, True),
@@ -370,21 +369,19 @@ def main():
         print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
         exit()
 
-    num_readings = int(parameters["num_readings"])
-    delta_current = (
-        float(parameters["high_current"]) - float(parameters["low_current"])
-    ) / 2.0
+    num_readings = int(parameters[("pulsecount") + ("pulsecount" * "pulselowmeas")])
+    
     experiment_setup(inst_6221, parameters, start_time)
 
-    inst_6221.write("SOUR:DELT:ARM")  # Arm the test
+    inst_6221.write("sour:pdel:arm")  # Arm the test
     time.sleep(3)
-    inst_6221.write("INIT:IMM")  # Start the test
+    inst_6221.write("init:imm")  # Start the test
 
     data = read_data(inst_6221, num_readings)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    csv_path = f".\\Delta_Measurement {date}.csv"
-    write_csv(data, delta_current, csv_path)
+    csv_path = f".\\PulsedIVLinear_Measurements {date}.csv"
+    write_csv(data, csv_path)
 
     inst_6221.write(
         ":SOUR:SWE:ABORT"

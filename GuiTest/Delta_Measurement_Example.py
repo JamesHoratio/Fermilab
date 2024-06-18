@@ -232,7 +232,7 @@ def main():
             tooltip="Valid Voltage Ranges: 0.01, 0.1, 1, 10 or 100",
         ),
         InstrumentOption(
-            "Delay", "delay", "0.5", tooltip="must be in range [1e-3, 9999.999]"
+            "Delay", "pulsedelay", "0.5", tooltip="must be in range [1e-3, 9999.999]"
         ),
         InstrumentOption("Integration NPLCs", "integration_NPLCs", "5"),
         InstrumentOption(
