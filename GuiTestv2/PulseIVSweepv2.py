@@ -10,7 +10,7 @@ program can collect.
     Copyright 2023 Tektronix, Inc.                      
     See www.tek.com/sample-license for licensing terms.
 """
-import os # Used to check if file exists
+import os
 import time
 import datetime
 import textwrap
@@ -19,8 +19,8 @@ from instrgui import InstrumentOption, open_gui_return_input
 
 DEBUG_PRINT_COMMANDS = True
 
-SAVED_PARAMETERS_FILENAME = "sweep_parameters.txt"
-
+# Ensure the parameters file is in the current working directory
+SAVED_PARAMETERS_FILENAME = os.path.join(os.getcwd(), "sweep_parameters.txt")
 
 def experiment_setup(instrument, parameters, start_time):
     """Set up instrument parameters for linear sweep test"""
@@ -47,11 +47,11 @@ def experiment_setup(instrument, parameters, start_time):
     pulsesweepstep = float(parameters["pulsesweepstep"])
     pulsevoltagerange = float(parameters["pulsevoltagerange"])
     pulsefilterstate = int(parameters["pulsefilterstate"])
-    pulsefiltercount = int(parameters["pulsefiltercount"])
-    pulsefiltertype = int(parameters["pulsefiltertype"])
-    num_readings = pulsecount + (pulsecount * pulselowmeas)
+    #pulsefiltercount = int(parameters["pulsefiltercount"])
+    #pulsefiltertype = int(parameters["pulsefiltertype"])
+    #num_readings = pulsecount + (pulsecount * pulselowmeas)
     
-    query2182Apresent = int(instrument.write("sour:pdel:nvpresent?"))
+    query2182Apresent = int(instrument.query("sour:pdel:nvpresent?"))
     if query2182Apresent == 0:
         print("2182A not present")
         instrument.disconnect()
@@ -130,8 +130,8 @@ def experiment_setup(instrument, parameters, start_time):
     instrument.write(f"SYST:COMM:SERIAL:SEND \":sens:volt:rang {pulsevoltagerange}\"")  # Set voltage measure range
     instrument.write(f"sens:aver:wind 0")  # Set averaging window
     instrument.write(f"sens:aver:stat {pulsefilterstate}")  # Set filter state
-    instrument.write(f"sens:aver:count {pulsefiltercount}")  # Set filter count
-    instrument.write(f"sens:aver:tcon {pulsefiltertype}")  # Set filter type
+    #instrument.write(f"sens:aver:count {pulsefiltercount}")  # Set filter count
+    #instrument.write(f"sens:aver:tcon {pulsefiltertype}")  # Set filter type
     instrument.write(f"SYST:COMM:SERIAL:SEND \":SENS:VOLT:NPLC {integration_nplcs}\"")  # Set NPLC for 2182A
     time.sleep(0.5)
 
@@ -195,9 +195,9 @@ def write_csv(data, csv_path: str):
             time_stamp = data[i + 1]
             source_current = data[i + 2]
             reading_number = data[i + 3]
-            #resistance = float(v_reading) / delta_current
+            resistance = float(v_reading) / float(source_current)
             csv_file.write(
-                f"{v_reading}, {time_stamp}, {source_current}, {reading_number}\n"
+                f"{v_reading}, {time_stamp}, {source_current}, {reading_number}, {resistance}\n"
             )
             csv_file.flush()
 
@@ -315,6 +315,13 @@ def main():
             "0.1",
             tooltip="Valid Voltage Ranges: 0.01, 0.1, 1, 10 or 100",
         ),
+        InstrumentOption(
+            "Sweep Delay",
+            "sweepdelay",
+            "0.5",
+            tooltip="Delay between sweeps in seconds",
+        ),
+
         InstrumentOption("Integration NPLCs", "integration_NPLCs", "5"),
         InstrumentOption(
             "Voltage Compliance",
