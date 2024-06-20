@@ -1,2 +1,3 @@
 6/14/2024 9:36 So far, I've had success connecting the 2182A Nanovoltmeter and the 6221 DC and AC Current Source. Dialing in the custom sweep that I need, and working on ensuring the timing is correct and that the measurements store in a seperate file. 
 6/14/2024 10:21 Added reference materials.
+6/20/204 14:47 Skipped a few update logs - in this time I've gotten a prototype to work and changed up the GUI. Now I am trying to get all the parameters dialed in and the timing correct.

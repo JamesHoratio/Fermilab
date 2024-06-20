@@ -30,7 +30,7 @@ def experiment_setup(instrument, parameters, start_time):
     volt_compliance = float(parameters["volt_compliance"])
     guarding_on = parameters["guarding_on"]
     low_to_earth_on = parameters["lowToEarth_on"]
-    sweepdelay = float(parameters["sweepdelay"])
+    #sweepdelay = float(parameters["sweepdelay"])
     pulsehighcurrent = float(parameters["pulsehighcurrent"])
     pulselowcurrent = float(parameters["pulselowcurrent"])
     pulsecount = int(parameters["pulsecount"])
@@ -315,13 +315,6 @@ def main():
             "0.1",
             tooltip="Valid Voltage Ranges: 0.01, 0.1, 1, 10 or 100",
         ),
-        InstrumentOption(
-            "Sweep Delay",
-            "sweepdelay",
-            "0.5",
-            tooltip="Delay between sweeps in seconds",
-        ),
-
         InstrumentOption("Integration NPLCs", "integration_NPLCs", "5"),
         InstrumentOption(
             "Voltage Compliance",
