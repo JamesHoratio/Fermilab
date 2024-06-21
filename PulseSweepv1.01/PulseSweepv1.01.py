@@ -1,15 +1,3 @@
-"""Keithley PyVisa example code that connects to 6221 + 2182/2182A instrument
-stack and runs delta measurements with user parameters from GUI.
-
-Set INSTRUMENT_RESOURCE_STRING equal to your instrument's resource string, found using the
-    VISA Interactive Control program.
-
-Note: 6221 Buffer can only store a max of 65,536 readings, limiting the amount of data this
-program can collect.
-
-    Copyright 2023 Tektronix, Inc.                      
-    See www.tek.com/sample-license for licensing terms.
-"""
 import os
 import time
 import datetime
@@ -344,9 +332,8 @@ def main():
         print("Application window closed without starting test; aborting")
         inst_6221.disconnect()
         stop_time = time.time()  # Stop the timer...
-
         print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
-        exit()
+        return  # Use return instead of exit to allow proper cleanup
 
     pulsecount = int(parameters["pulsecount"])
     pulselowmeas = int(parameters["pulselowmeas"])
@@ -376,7 +363,7 @@ def main():
     print("done")
     print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
 
-    exit()
+    return  # Use return instead of exit to allow proper cleanup
 
 if __name__ == "__main__":
     main()

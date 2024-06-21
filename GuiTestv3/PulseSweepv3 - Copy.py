@@ -223,7 +223,7 @@ def main():
     pulselowmeas = parameters["pulselowmeas"]
     num_readings = pulsecount + (pulsecount * pulselowmeas)
 
-    experiment_setup(inst_6221, parameters, start_time)
+    experiment_setup(inst_6221, parameters)
 
     inst_6221.write("sour:pdel:arm")  # Arm the test
     time.sleep(3)
