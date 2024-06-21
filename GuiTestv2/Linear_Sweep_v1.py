@@ -107,7 +107,7 @@ def experiment_setup(instrument, parameters, start_time):
 
     time.sleep(0.5)
 
-    sweepdelay = ((pulsecount * 1/50 - 6)/1000)
+    sweepdelay = (0.001)
     
     instrument.write(f"SOUR:DEL {sweepdelay}") # Set delay between pulses
     instrument.write("form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
