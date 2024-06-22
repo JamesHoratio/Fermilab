@@ -46,6 +46,7 @@ class PulseSweepProgram:
         time.sleep(1) # Wait 1 second
         self.send_command("pdel:swe ON")  # Set pulse sweep state
         self.send_command(":form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
+        time.sleep(1) # Wait 1 second
         #self.send_command(":SOUR:CURR:COMP {volt_compliance}")  # Set voltage compliance
         self.send_command(":sour:swe:spac LIN")  # Set pulse sweep spacing
         self.send_command(":sour:curr:start 0")  # Set pulse sweep start
@@ -72,6 +73,37 @@ class PulseSweepProgram:
         data = self.query_command(":trac:data:read?")
         print(data)
         return data
+    
+    def save_data(self, data):
+        # Save the data to a CSV file
+        filename = "pulsesweepdata.csv"
+        with open(filename, "w") as file:
+            writer = csv.writer(file)
+            writer.writerow(data) # Write the data to the file
+        print(f"Data saved to {filename}")
+
+    def startsweepcheck(self):
+        # Check if the pulse sweep is running
+        sweep_running = self.query_command(":sour:swe:stat?")
+        print(f"Pulse sweep running: {sweep_running}")
+        return sweep_running
+    
+    def usercheck(self):
+        # If user decides to abort or continue the program
+        user_decision = input("Do you want to continue with the program? (yes/no): ")
+        if user_decision.lower() == "no":
+            print("Aborting the program as per user's request.")
+            self.send_command(":SOUR:SWE:ABORT")  # Abort the test
+            inst_6221.disconnect()
+            stop_time = time.time()  # Stop the timer
+            print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
+            sys.exit(1)
+        elif user_decision.lower() == "yes":
+            print("Continuing with the program.")
+        else:
+            print("Invalid input. Please enter 'yes' or 'no'.")
+            self.usercheck()
+        
 
 def get_user_input(prompt: str, valid_options=None):
         while True:
@@ -122,6 +154,7 @@ def instrument_config(ip_string: str = None):
 def main():
     program = PulseSweepProgram()
     program.deviceprimer()
+    program.usercheck()
     program.sweep()
     data = read_data()
     print(data)
