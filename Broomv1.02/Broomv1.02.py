@@ -7,67 +7,87 @@ import pyvisa as visa
 import argparse
 
 DEBUG_PRINT_COMMANDS = True
-INSTRUMENT_RESOURCE_STRING_6221 = "TCPIP0::169.254.47.133::1394::SOCKET"  # Change this to your instrument's resource string
-INSTRUMENT_RESOURCE_STRING_2182A = "GPIB0::7::INSTR"  # Change this to your instrument's resource string
+
+INSTRUMENT_RESOURCE_STRING_6221 = "TCPIP0::169.254.47.133::1394::SOCKET"  # Change this to your 6221's resource string
+INSTRUMENT_RESOURCE_STRING_2182A = "GPIB0::7::INSTR"  # Change this to your 2182A's resource string
 SAVED_PARAMETERS_FILENAME = ("sweep_parameters.txt")
 
+class BroomCurrentSource:
+    def __init__(self, device):
+        self.device = device
 class Broom:
     def __init__(self):
         try:
             self.rm = visa.ResourceManager()
-            self.device = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING)
-            #response = self.device.query('*IDN?')
-            #print("Instrument ID:", response)
+            self.list_resources()
+            self.device_6221 = self.connect_instrument(INSTRUMENT_RESOURCE_STRING_6221)
+            self.device_2182A = self.connect_instrument(INSTRUMENT_RESOURCE_STRING_2182A)
+            response_6221 = self.device_6221.query('*IDN?')
+            response_2182A = self.device_2182A.query('*IDN?')
+            print("6221 ID:", response_6221)
+            print("2182A ID:", response_2182A)
         except visa.VisaIOError as e:
-            print(f"Error initializing instrument: {e}")
+            print(f"Error initializing instruments: {e}")
             sys.exit(1)
 
-    def send_command(self, command: str) -> None:
+    def connect_instrument(self, resource_string):
         try:
-            if DEBUG_PRINT_COMMANDS:
-                print(f"Sending command: {command}")
-            self.device.write(command)
+            instrument = self.rm.open_resource(resource_string)
+            instrument.timeout = 10000  # Set timeout to 10 seconds
+            return instrument
         except visa.VisaIOError as e:
-            print(f"Error sending command '{command}': {e}")
+            print(f"Error connecting to instrument {resource_string}: {e}")
+            sys.exit(1)
 
-    def query_command(self, command: str):
-        response = ""
+    def list_resources(self):
+        try:
+            resources = self.rm.list_resources()
+            print("Available VISA resources:")
+            for resource in resources:
+                print(resource)
+        except Exception as e:
+            print(f"Error listing VISA resources: {e}")
+
+    def send_command(self, device, command: str) -> None:
         try:
             if DEBUG_PRINT_COMMANDS:
-                print(f"Querying command: {command}")
-            response = self.device.query(command)
-            if DEBUG_PRINT_COMMANDS:
-                print(f"Response: {response}")
+                print(f"Sending command to {device}: {command}")
+            device.write(command)
         except visa.VisaIOError as e:
-            print(f"Error querying command '{command}': {e}")
+            print(f"Error sending command '{command}' to {device}: {e}")
+
+    def query_command(self, device, command: str) -> str:
+        try:
+            if DEBUG_PRINT_COMMANDS:
+                print(f"Querying command from {device}: {command}")
+            return device.query(command)
+        except visa.VisaIOError as e:
+            print(f"Error querying command '{command}' from {device}: {e}")
             return ""
-        
-    
-    def testquery(self, command: str):
-        try:
-            self.query_command(command)
-            time.sleep(3)
-            test = self.device.query('*IDN?')
-            print(f"Test query: {test}")
-        except Exception as e:
-            print(f"Error querying test: {e}")
 
-    def retestquery(self):
-        self.testquery("READ?")
-        self.testquery(":SYST:COMM:SER:SEND \"*IDN?\"")
-        #self.query_command(":sour:swe:arm:stat?")
-        #self.query_command(":sour:swe:stat?")
-
-    def testcommand(self, command: str):
+    def ping_device(self, device_name):
         try:
-            self.send_command(command)
-            print(f"Command sent: {command}")
+            if device_name == "6221":
+                device = self.device_6221
+                response = self.query_command(device, '*IDN?')
+                if response:
+                    print(f"6221 is responding: {response}")
+                else:
+                    print("6221 is not responding.")
+            elif device_name == "2182A":
+                device = self.device_2182A
+                response = self.query_command(device, '*IDN?')
+                if response:
+                    print(f"2182A is responding: {response}")
+                else:
+                    print("2182A is not responding.")
+            else:
+                print(f"Unknown device: {device_name}")
         except Exception as e:
-            print(f"Error sending command: {e}")
+            print(f"Error pinging device {device_name}: {e}")
 
     def broomrun(self):
         try:
-            self.testreset()
             self.deviceprimer()
             self.armquery()
             self.usercheck()
@@ -82,47 +102,48 @@ class Broom:
     def deviceprimer(self):
         try:
             # Abort tests in the other modes
-            self.send_command(":SOUR:SWE:ABOR")
-            self.send_command(":SOUR:WAVE:ABOR")
-            self.send_command("*RST")  # Reset the 6221
+            self.send_command(self.device_6221, ":SOUR:SWE:ABOR")
+            self.send_command(self.device_6221, ":SOUR:WAVE:ABOR")
+            self.send_command(self.device_6221, "*RST")  # Reset the 6221
             time.sleep(7)  # Wait 7 seconds
 
             # Query if the 6221 has reset properly
-            if self.query_command("*OPC?").strip() != "1":
+            if self.query_command(self.device_6221, "*OPC?").strip() != "1":
                 print("6221 did not reset properly.")
                 sys.exit(1)
 
-            self.send_command(":SYST:COMM:SERIAL:SEND \"SYST:PRES\"")  # Reset the 2182A
+            self.send_command(self.device_2182A, "*RST")  # Reset the 2182A
             time.sleep(5)  # Wait 5 seconds
 
             # Query if the 2182A has reset properly
-            if self.query_command(':SYST:COMM:SERIAL:SEND \"*OPC?\"').strip() != "1":
+            if self.query_command(self.device_2182A, "*OPC?").strip() != "1":
                 print("2182A did not reset properly.")
                 sys.exit(1)
 
-            self.send_command("pdel:swe ON")  # Set pulse sweep state
-            self.send_command(":form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
+            self.send_command(self.device_6221, "pdel:swe ON")  # Set pulse sweep state
+            self.send_command(self.device_6221, ":form:elem READ,TST,RNUM,SOUR")  # Set readings to be returned
             time.sleep(1)  # Wait 1 second
-            self.send_command(":sour:swe:spac LIN")  # Set pulse sweep spacing
-            self.send_command(":sour:curr:start 0")  # Set pulse sweep start
-            self.send_command(":sour:curr:stop 0.01")  # Set pulse sweep stop
-            self.send_command(":sour:curr:poin 11")  # Set pulse count
-            self.send_command(":sour:del 0.01")  # Set pulse delay
-            self.send_command(":sour:swe:rang BEST")  # Set sweep range
-            self.send_command(":sour:pdel:lme 2")  # Set number of low measurements
-            self.send_command(":sour:curr:comp 100")  # Set pulse compliance
-            self.send_command(":SYST:COMM:SERIAL:SEND \":sens:volt:rang 10\"")  # Set voltage measure range
-            self.send_command("UNIT V")  # Set units
+            self.send_command(self.device_6221, ":sour:swe:spac LIN")  # Set pulse sweep spacing
+            self.send_command(self.device_6221, ":sour:curr:start 0")  # Set pulse sweep start
+            self.send_command(self.device_6221, ":sour:curr:stop 0.01")  # Set pulse sweep stop
+            self.send_command(self.device_6221, ":sour:curr:poin 11")  # Set pulse count
+            self.send_command(self.device_6221, ":sour:del 0.01")  # Set pulse delay
+            self.send_command(self.device_6221, ":sour:swe:rang BEST")  # Set sweep range
+            self.send_command(self.device_6221, ":sour:pdel:lme 2")  # Set number of low measurements
+            self.send_command(self.device_6221, ":sour:curr:comp 100")  # Set pulse compliance
+            self.send_command(self.device_2182A, ":sens:volt:rang 10")  # Set voltage measure range
+            self.send_command(self.device_6221, "UNIT V")  # Set units
             time.sleep(1)
-            self.send_command(":sour:swe:arm")  # Arm the pulse sweep
+            self.send_command(self.device_6221, ":sour:swe:arm")  # Arm the pulse sweep
             time.sleep(3)  # Wait 3 seconds
+            self.armquery()
         except Exception as e:
             print(f"Error in device primer: {e}")
 
     def armquery(self):
         try:
             # Query the pulse sweep arm status
-            arm_status = self.query_command(":sour:swe:arm:stat?")
+            arm_status = self.query_command(self.device_6221, ":sour:swe:arm:stat?")
             print(f"Pulse sweep armed: {arm_status}")
             return arm_status
         except Exception as e:
@@ -131,7 +152,7 @@ class Broom:
 
     def sweep(self):
         try:
-            self.send_command(":init:imm")  # Start the pulse sweep
+            self.send_command(self.device_6221, ":init:imm")  # Start the pulse sweep
             print("Pulse sweep initiated.")
             time.sleep(4)  # Wait 4 seconds
         except Exception as e:
@@ -140,7 +161,7 @@ class Broom:
     def get_data_points(self):
         try:
             # Query the number of points in the buffer
-            data_points = int(self.query_command(":TRAC:POIN:ACT?").strip())
+            data_points = int(self.query_command(self.device_6221, ":TRAC:POIN:ACT?").strip())
             print(f"Data points available: {data_points}")
             return data_points
         except Exception as e:
@@ -155,7 +176,7 @@ class Broom:
                 print("No data points available to read.")
                 return ""
             
-            data = self.device.query(f":TRAC:DATA? 1,{data_points}")
+            data = self.query_command(self.device_6221, f":TRAC:DATA? 1,{data_points}")
             print(data)
             return data
         except Exception as e:
@@ -177,12 +198,11 @@ class Broom:
             print(f"Data saved to {filename}")
         except Exception as e:
             print(f"Error saving data: {e}")
-        return
 
     def startsweepcheck(self):
         try:
             # Check if the pulse sweep is running
-            sweep_running = self.query_command(":sour:swe:stat?")
+            sweep_running = self.query_command(self.device_6221, ":sour:swe:stat?")
             print(f"Pulse sweep running: {sweep_running}")
             return sweep_running
         except Exception as e:
@@ -194,8 +214,8 @@ class Broom:
         user_decision = input("Do you want to continue with Broom? (yes/no): ")
         if user_decision.lower() == "no":
             print("Aborting the Broom as per user's request.")
-            self.send_command(":SOUR:SWE:ABORT")  # Abort the test
-            self.testreset() # Reset the instruments
+            self.send_command(self.device_6221, ":SOUR:SWE:ABORT")  # Abort the test
+            self.testreset()  # Reset the instruments
             sys.exit(1)
         elif user_decision.lower() == "yes":
             print("Resuming Broom.")
@@ -205,44 +225,36 @@ class Broom:
     
     def testreset(self):
         try:
-            self.send_command(":SOUR:SWE:ABOR")
-            self.send_command("*RST")
+            self.send_command(self.device_6221, ":SOUR:SWE:ABOR")
+            self.send_command(self.device_6221, "*RST")
             time.sleep(3)
             
             # Query if the 6221 has reset properly
-            if self.query_command("*OPC?").strip() != "1":
+            if self.query_command(self.device_6221, "*OPC?").strip() != "1":
                 print("6221 did not reset properly.")
                 sys.exit(1)
 
-            self.send_command(":SYST:COMM:SER:SEND \"SYST:PRES\"")
+            self.send_command(self.device_2182A, "*RST")
             time.sleep(3)
             
-            #self.send_command(":SYST:COMM:SERIAL:SEND \"INIT:CONT OFF\"")
-            #time.sleep(0)
-            
-            self.send_command(":SYST:COMM:SER:SEND \"ABOR\"")
-            time.sleep(.5)
-            self.send_command(":SYST:COMM:SER:SEND \"*OPC\"")
-            # Query if the 2182A has reset properly
-          
-            self.send_command(":SYST:COMM:SER:SEND \"SYST:PRES\"")
-            time.sleep(3)
+            if self.query_command(self.device_2182A, "*OPC?").strip() != "1":
+                print("2182A did not reset properly.")
+                sys.exit(1)
 
-
-            self.query_command(":sour:swe:arm:stat?")
-            self.query_command(":sour:swe:stat?")
+            self.query_command(self.device_6221, ":sour:swe:arm:stat?")
+            self.query_command(self.device_6221, ":sour:swe:stat?")
             print("Test reset successful.")
         except Exception as e:
             print(f"Error in test reset: {e}")
 
     def close(self):
         try:
-            self.device.close()
+            self.device_6221.close()
+            self.device_2182A.close()
             self.rm.close()
             print("Connection closed.")
         except Exception as e:
             print(f"Error closing connection: {e}")
-
 
     def parse_and_execute(self):
         parser = argparse.ArgumentParser(description="Broom v1.01")
@@ -255,9 +267,7 @@ class Broom:
         parser.add_argument('--startsweepcheck', action='store_true', help='Check if the sweep is running')
         parser.add_argument('--usercheck', action='store_true', help='Check if the user wants to continue')
         parser.add_argument('--getdatapoints', action='store_true', help='Get the number of data points')
-        parser.add_argument('--testquery', action='store_true', help='Query test')
-        parser.add_argument('--retestquery', action='store_true', help='Query test test')
-        parser.add_argument('--testcommand', action='store_true', help='Send a test command')
+        parser.add_argument('--ping', nargs='?', const='all', help='Ping devices to check if they are responding')
 
         args = parser.parse_args()
 
@@ -273,15 +283,19 @@ class Broom:
                 "startsweepcheck": self.startsweepcheck,
                 "usercheck": self.usercheck,
                 "getdatapoints": self.get_data_points,
-                "testquery": self.testquery,
-                "retestquery": self.retestquery,
-                "testcommand": self.testcommand,
             }
 
-            for action, func in actions.items():
-                if getattr(args, action):
-                    func()
-                    break
+            if args.ping:
+                if args.ping == 'all':
+                    self.ping_device("6221")
+                    self.ping_device("2182A")
+                else:
+                    self.ping_device(args.ping)
+            else:
+                for action, func in actions.items():
+                    if getattr(args, action):
+                        func()
+                        break
         except Exception as e:
             print(f"Error parsing arguments: {e}")
             return None
@@ -296,14 +310,12 @@ class Broom:
         data = self.read()
         self.save_data(data)
 
-
 def main():
-
     broom = Broom()
     args = broom.parse_and_execute()
-    broom.usercheck()
+
     if not args:
-        try:   
+        try:
             broom.broomrun()
         finally:
             broom.close()
