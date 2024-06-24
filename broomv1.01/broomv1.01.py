@@ -4,13 +4,14 @@ import csv
 import time
 import datetime
 import pyvisa as visa
+import argparse
 
 DEBUG_PRINT_COMMANDS = True
 
 INSTRUMENT_RESOURCE_STRING = "GPIB0::12::INSTR"  # Change this to your instrument's resource string
 SAVED_PARAMETERS_FILENAME = ("sweep_parameters.txt")
 
-class PulseSweepProgram:
+class Broom:
     def __init__(self):
         try:
             self.rm = visa.ResourceManager()
@@ -37,6 +38,20 @@ class PulseSweepProgram:
         except visa.VisaIOError as e:
             print(f"Error querying command '{command}': {e}")
             return ""
+
+    def broomrun(self):
+        try:
+            self.testreset()
+            self.deviceprimer()
+            self.armquery()
+            self.usercheck()
+            self.sweep()
+            self.startsweepcheck()
+            data = self.read()
+            self.save_data(data)
+            self.testreset()
+        except Exception as e:
+            print(f"Error running Broom: {e}")
 
     def deviceprimer(self):
         try:
@@ -75,6 +90,7 @@ class PulseSweepProgram:
             time.sleep(1)
             self.send_command(":sour:swe:arm")  # Arm the pulse sweep
             time.sleep(3)  # Wait 3 seconds
+            self.armquery()
         except Exception as e:
             print(f"Error in device primer: {e}")
 
@@ -91,14 +107,30 @@ class PulseSweepProgram:
     def sweep(self):
         try:
             self.send_command(":init:imm")  # Start the pulse sweep
+            print("Pulse sweep initiated.")
             time.sleep(4)  # Wait 4 seconds
         except Exception as e:
-            print(f"Error during sweep: {e}")
+            print(f"Error initiating sweep: {e}")
+
+    def get_data_points(self):
+        try:
+            # Query the number of points in the buffer
+            data_points = int(self.query_command(":TRAC:POIN:ACT?").strip())
+            print(f"Data points available: {data_points}")
+            return data_points
+        except Exception as e:
+            print(f"Error querying data points: {e}")
+            return 0
 
     def read(self):
         try:
             # Read the pulse sweep data
-            data = self.query_command(":trac:data:read?")
+            data_points = self.get_data_points()
+            if data_points == 0:
+                print("No data points available to read.")
+                return ""
+            
+            data = self.device.query(f":TRAC:DATA? 1,{data_points}")
             print(data)
             return data
         except Exception as e:
@@ -132,15 +164,15 @@ class PulseSweepProgram:
             return ""
 
     def usercheck(self):
-        # If user decides to abort or continue the program
-        user_decision = input("Do you want to continue with the program? (yes/no): ")
+        # If user decides to abort or continue the Broom
+        user_decision = input("Do you want to continue with Broom? (yes/no): ")
         if user_decision.lower() == "no":
-            print("Aborting the program as per user's request.")
+            print("Aborting the Broom as per user's request.")
             self.send_command(":SOUR:SWE:ABORT")  # Abort the test
-            self.device.close()
+            self.testreset() # Reset the instruments
             sys.exit(1)
         elif user_decision.lower() == "yes":
-            print("Continuing with the program.")
+            print("Resuming Broom.")
         else:
             print("Invalid input. Please enter 'yes' or 'no'.")
             self.usercheck()
@@ -170,16 +202,72 @@ class PulseSweepProgram:
         except Exception as e:
             print(f"Error in test reset: {e}")
 
+    def close(self):
+        try:
+            self.device.close()
+            self.rm.close()
+            print("Connection closed.")
+        except Exception as e:
+            print(f"Error closing connection: {e}")
+
+
+    def parse_and_execute(self):
+        parser = argparse.ArgumentParser(description="Broom v1.01")
+        parser.add_argument('--testreset', action='store_true', help='Perform a test reset')
+        parser.add_argument('--deviceprimer', action='store_true', help='Prime devices for sweep')
+        parser.add_argument('--armquery', action='store_true', help='Query the arm status')
+        parser.add_argument('--sweep', action='store_true', help='Start the sweep')
+        parser.add_argument('--read', action='store_true', help='Read the data')
+        parser.add_argument('--save', action='store_true', help='Save the data')
+        parser.add_argument('--startsweepcheck', action='store_true', help='Check if the sweep is running')
+        parser.add_argument('--usercheck', action='store_true', help='Check if the user wants to continue')
+        parser.add_argument('--getdatapoints', action='store_true', help='Get the number of data points')
+
+        args = parser.parse_args()
+
+        try:
+            # Using a dictionary to simulate a switch-case block
+            actions = {
+                "testreset": self.testreset,
+                "deviceprimer": self.deviceprimer,
+                "armquery": self.armquery,
+                "sweep": self.sweep_sequence,
+                "read": self.read,
+                "save": self.save_sequence,
+                "startsweepcheck": self.startsweepcheck,
+                "usercheck": self.usercheck,
+                "getdatapoints": self.get_data_points
+            }
+
+            for action, func in actions.items():
+                if getattr(args, action):
+                    func()
+                    break
+        except Exception as e:
+            print(f"Error parsing arguments: {e}")
+            return None
+
+        return args
+
+    def sweep_sequence(self):
+        self.usercheck()
+        self.sweep()
+
+    def save_sequence(self):
+        data = self.read()
+        self.save_data(data)
+
+
 def main():
-    program = PulseSweepProgram()
-    program.deviceprimer()
-    program.armquery()
-    program.usercheck()
-    program.sweep()
-    program.startsweepcheck()
-    data = program.read()
-    program.save_data(data)
-    program.testreset()
+
+    broom = Broom()
+    args = broom.parse_and_execute()
+
+    if not args:
+        try:   
+            broom.broomrun()
+        finally:
+            broom.close()
 
 if __name__ == "__main__":
     main()
