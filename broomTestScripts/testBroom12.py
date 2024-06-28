@@ -171,6 +171,7 @@ class BroomK6221:
             return  # Exit the function
 
         self.flush_buffer()  # Flush the buffer
+        self.send_command_to_2182A('INITiate:IMMediate')
         self.send_command('INITiate:IMMediate')  # Start the pulse sweep
         time.sleep(5)  # Sleep for 5 seconds
         self.send_command('SOUR:SWE:ABOR')  # Abort the sweep
