@@ -7,3 +7,4 @@ print (i_source.read())
 j_source = rm.open_resource('GPIB0::7::INSTR', write_termination='\r', read_termination='\n')
 j_source.write("*idn?")
 print (j_source.read())
+

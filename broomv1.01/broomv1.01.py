@@ -15,9 +15,9 @@ class Broom:
     def __init__(self):
         try:
             self.rm = visa.ResourceManager()
-            self.device = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING)
-            #response = self.device.query('*IDN?')
-            #print("Instrument ID:", response)
+            self.device = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING_6221)
+            response = self.device.query('*IDN?')
+            print("Instrument ID:", response)
         except visa.VisaIOError as e:
             print(f"Error initializing instrument: {e}")
             sys.exit(1)

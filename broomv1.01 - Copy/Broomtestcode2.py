@@ -542,7 +542,11 @@ if __name__ == "__main__":
 #### initiate logging ###########
 logging.basicConfig(filename= "logFile.txt", filemode='a', format='%(asctime)s - %(levelname)s -%(message)s', level=logging.INFO)
 logging.info('Logging is started')
+# Assuming "mainwindow" is a custom module located in the same directory as the script
+
+
 root = tk.Tk()
+root.title("Broom")
 window = MainWindow(root)
 root.mainloop()
 logging.info('Logging ended')

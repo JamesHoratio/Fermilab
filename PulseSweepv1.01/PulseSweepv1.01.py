@@ -162,7 +162,7 @@ def read_data(instrument, num_readings: int):
             data_sel_count = num_readings - i * 1000
 
         # Transfer readings over GPIB
-        raw_data = instrument.query(f"TRAC:DATA:SEL? {i * 1000},{data_sel_count}")
+        raw_data = instrument.query(f"TRAC:DATA:SEL? '{i * 1000}','{data_sel_count}'")
         raw_data = raw_data.split(",")
         data.extend(raw_data)
 

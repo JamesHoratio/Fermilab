@@ -58,10 +58,10 @@ class K6221():
             self.sm.write_termination='\n'
             self.sm.read_termination='\n'
             self.sm.chunk_size=102400
-            logging.debug('Connected to 6221 at ' + K6221Address)
+            logging.debug(f'Connected to 6221 at {self.K6221Address}')
             return True
         except Exception:
-            logging.error('Unable to connect to 6221 at ' + K6221Address)
+            logging.error(f'Unable to connect to 6221 at {self.K6221Address}')
             return False
 ############## configure source smu#####
     def setSourceMode(self,chan,param,slim,comp):
@@ -396,12 +396,8 @@ class configFrame(tk.Frame):
         #### Instrument Name ###################
         lbl_Iname = tk.Label(master=self, text="Instrument Name")
         lbl_Iname.grid(row=rCount,column=0,sticky='e')
-        r1 = tk.Radiobutton(self, text="Keithley 2636B", variable=self.iName, value='K2636B')
-        r1.grid(row=rCount,column=1)
-        r1 = tk.Radiobutton(self, text="Keysight B2912B", variable=self.iName, value='B2912B')
-        r1.grid(row=rCount,column=2)
         r1 = tk.Radiobutton(self, text="Keithley 6221+2182A", variable=self.iName, value='K6221')
-        r1.grid(row=rCount,column=3)
+        r1.grid(row=rCount,column=1)
         rCount = rCount + 1
         #### Measurement Type ################
         lbl_mt = tk.Label(master=self, text="measurement type")
@@ -626,9 +622,6 @@ class controlFrame(tk.Frame):
         self.PF = PF
         self.CF = configFrame(self,PF)
         self.DCIV = DCIVFrame(self, self.CF, PF)
-        self.dIdV = dIdVFrame(self, self.CF, PF)
-        self.MOSFET = MOSFETFrame(self, self.CF, PF)
-        self.IVT = IVTFrame(self, self.CF, PF)
         self.CF.grid(row = 1,column=0)
         self.CF.setDefaults()
         self.bottomFrame = tk.Frame(self)
@@ -638,21 +631,11 @@ class controlFrame(tk.Frame):
         self.bottomFrame.grid_forget()
         if cfData["mt"] == 'iv':
             self.bottomFrame=self.DCIV
-        elif cfData["mt"] == 'MOSFET':
-            self.bottomFrame=self.MOSFET
-        elif cfData["mt"] == 'IVT':
-            self.bottomFrame=self.IVT
-        elif cfData["mt"] == 'dIdV':
-            self.bottomFrame=self.dIdV
         self.bottomFrame.tkraise()
         self.bottomFrame.grid(row=2,column = 0, padx = 10)
         self.bottomFrame.setDefaults()
         ###### instantiate the instruments ###############
-        if cfData["inst"] == 'B2912B':
-            self.CF.MD = B2912B()
-        elif cfData["inst"] == 'K2636B':
-            self.CF.MD = K2636B()
-        elif cfData["inst"] == 'K6221':
+        if cfData["inst"] == 'K6221':
             self.CF.MD = K6221()
 #########################################################################################
 ############ The main class for the windows #########################################
