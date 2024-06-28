@@ -5,17 +5,23 @@ import pyvisa as visa
 import argparse
 import numpy as np
 import datetime
+import logging
 
+# Constants
 DEBUG_PRINT_COMMANDS = True
 INSTRUMENT_RESOURCE_STRING_6221 = "TCPIP0::169.254.47.133::1394::SOCKET"
-DATA_FILENAME = "pulse_sweep_data.csv"
+TIMEOUT = 60000
+SLEEP_INTERVAL = 1
+
+# Setup logging
+logging.basicConfig(level=logging.DEBUG if DEBUG_PRINT_COMMANDS else logging.INFO)
 
 class BroomK6221:
     def __init__(self):
         self.K6221Address = INSTRUMENT_RESOURCE_STRING_6221
         self.rm = visa.ResourceManager()
         self.k6 = self.rm.open_resource(self.K6221Address, write_termination='\n', read_termination='\n')
-        self.k6.timeout = 60000
+        self.k6.timeout = TIMEOUT
         self.k6.send_end = True
         self.init_instrument()
 
@@ -26,66 +32,75 @@ class BroomK6221:
         self.wait_for_completion()
         self.send_command('SYST:BEEP:STAT OFF')
         self.wait_for_completion()
-        self.send_command('FORM:ELEM READ,TST,RNUM,SOUR;')
+        self.send_command('FORM:ELEM READ,TST,RNUM,SOUR')
         time.sleep(4)
         self.wait_for_completion()
-        self.send_command('SYST:COMM:SER:SEND ":INIT:CONT OFF;:ABORT"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND "*CLS"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND ":SYST:PRES"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND "*RST"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND "TRAC:CLE"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND ":SYST:BEEP:STAT OFF"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND ":SYST:REM"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND ":SENS:FUNC \'VOLT:DC\'"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:SEND ":SENS:CHAN 1"')
-        self.wait_for_completion_2182A()
-        self.send_command('SYST:COMM:SER:BAUD 19200')
-        self.wait_for_completion_2182A()
-        print("Configured Successfully.")
+        self.init_2182A()
+        logging.info("Configured Successfully.")
+
+    def init_2182A(self):
+        commands = [
+            ':INIT:CONT OFF;:ABORT',
+            '*CLS',
+            ':SYST:PRES',
+            '*RST',
+            'TRAC:CLE',
+            ':SYST:BEEP:STAT OFF',
+            ':SYST:REM',
+            ":SENS:FUNC 'VOLT:DC'",
+            ':SENS:CHAN 1',
+            'SYST:COMM:SER:BAUD 19200',
+            ':SYST:REM',
+            ":SENS:FUNC 'VOLT:DC'",
+            ':SENS:CHAN 1',
+            ':SENS:VOLT:RANG 0.1',
+            ':TRIG:COUN 11',
+            ':SENS:VOLT:AZER:STAT ON',
+            ':SENS:DEL:TRAN ON',
+            ':SYST:ZCH ON',
+            ':SYST:ZCH:STAT ON',
+            ':SYST:ZCORR:ACQ'
+        ]
+        for command in commands:
+            self.send_command_to_2182A(command)
+            self.wait_for_completion_2182A()
 
     def send_command(self, command):
-        if DEBUG_PRINT_COMMANDS:
-            print(f"Sending command: {command}")
+        logging.debug(f"Sending command: {command}")
         self.k6.write(command)
 
     def query_command(self, command):
-        if DEBUG_PRINT_COMMANDS:
-            print(f'Querying command: {command}')
+        logging.debug(f'Querying command: {command}')
         return self.k6.query(command)
+
+    def send_command_to_2182A(self, command):
+        self.send_command(f'SYST:COMM:SER:SEND "{command}"')
 
     def flush_buffer(self):
         try:
             self.k6.clear()
-        except visa.VisaIOError:
-            pass
+        except visa.VisaIOError as e:
+            logging.error(f"Error flushing buffer: {e}")
 
     def wait_for_completion(self):
         self.send_command('*OPC')
-        response = ''
-        while response.strip() != '1':
-            response = self.query_command('*OPC?')
-            time.sleep(1)
-            if DEBUG_PRINT_COMMANDS:
-                print(f'K6221 OPC response: {response}.')
+        while True:
+            response = self.query_command('*OPC?').strip()
+            if response == '1':
+                break
+            time.sleep(SLEEP_INTERVAL)
+            logging.debug(f'K6221 OPC response: {response}.')
 
     def wait_for_completion_2182A(self):
-        self.send_command('SYST:COMM:SER:SEND "*OPC"')
-        response = ''
-        while response.strip() != '1':
-            self.send_command('SYST:COMM:SER:SEND "*OPC?"')
+        self.send_command_to_2182A('*OPC')
+        while True:
+            self.send_command_to_2182A('*OPC?')
             time.sleep(0.05)
-            response = self.query_command('SYST:COMM:SER:ENT?')
-            if DEBUG_PRINT_COMMANDS:
-                print(f'K2182A OPC response: {response}')
-            time.sleep(1)
+            response = self.query_command('SYST:COMM:SER:ENT?').strip()
+            if response == '1':
+                break
+            time.sleep(SLEEP_INTERVAL)
+            logging.debug(f'K2182A OPC response: {response}')
 
     def configure_pulse_sweep(self):
         self.send_command('*RST')
@@ -93,28 +108,33 @@ class BroomK6221:
         self.send_command('TRACe:CLEar')
         self.wait_for_completion()
         if self.query_command('SOURce:PDELta:NVPResent?').strip() != '1':
-            print("Error establishing connection with the 2182A.")
+            logging.error("Error establishing connection with the 2182A.")
+            return False
         time.sleep(1)
         self.send_command('SYST:BEEP:STAT OFF')
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:HIGH 0.01')
+
+        # Configure the pulse sweep parameters
+        self.send_command('SOURce:PDELta:HIGH 0.01')  # High level of pulse (10 mA)
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:LOW 0')
+        self.send_command('SOURce:PDELta:LOW 0')  # Low level of pulse (0 mA)
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:COUNt 11')
+        self.send_command('SOURce:PDELta:COUNt 11')  # Number of pulses
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:WIDth 0.0001')
+        self.send_command('SOURce:PDELta:WIDth 500e-9')  # Pulse width (500 ns)
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:SDELay 6e-5')
+        self.send_command('SOURce:PDELta:SDELay 500e-9')  # Off time (500 ns)
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:INTerval 5')
+        self.send_command('SOURce:PDELta:INTerval 1e-6')  # Total time per cycle (1 us)
         self.wait_for_completion()
-        self.send_command('SOURce:PDELta:RANGing BEST')
+        self.send_command('SOURce:PDELta:RANGing BEST')  # Optimal ranging
         self.wait_for_completion()
-        self.send_command('SYST:COMM:SER:SEND ":SENS:VOLT:RANG 0.1"')
+        self.send_command('SYST:COMM:SER:SEND ":SENS:VOLT:RANG 0.1"')  # Set voltage range on 2182A
         self.wait_for_completion_2182A()
-        self.send_command('SOURce:PDELta:SWEep:STATe ON')
+        self.send_command('SOURce:PDELta:SWEep:STATe ON')  # Enable pulse sweep
         self.wait_for_completion()
+
+        # Additional sweep parameters
         self.send_command('SOURce:SWEep:SPACing LIN')
         self.wait_for_completion()
         self.send_command('SOURce:CURRent:STARt 0')
@@ -129,23 +149,25 @@ class BroomK6221:
         self.wait_for_completion()
         self.send_command('SYST:COMM:SER:SEND ":trig:coun 1;:sour ext"')
         self.wait_for_completion()
-        self.send_command('SYST:COMM:SER:SEND ":DELTA:ARM"')
         self.send_command('SYST:COMM:SER:SEND ":samp:coun 11"')
         self.send_command('SOUR:PDEL:ARM')
         self.send_command('SYST:COMM:SER:SEND ":PDEL:ARM"')
-        
-        
+
         if not self.user_check():
-            self.send_command(':SOUR:SWE:ABORT')
-            self.wait_for_completion()
+            self.abort_sweep()
             return False
-        self.send_command('INIT:IMM;SYST:COMM:SER:SEND ":READ?"')
-        
-        time.sleep(5)
-        self.send_command(':SOUR:SWE:ABORT')
-        self.wait_for_completion()
-        time.sleep(1)
+        self.start_sweep()
         return True
+
+    def start_sweep(self):
+        self.send_command('INIT:IMM')
+        self.send_command_to_2182A('INIT:IMM')
+        time.sleep(5)
+        self.abort_sweep()
+
+    def abort_sweep(self):
+        self.send_command('SOUR:SWE:ABORT')
+        self.wait_for_completion()
 
     def run_pulse_sweep(self):
         if self.configure_pulse_sweep():
@@ -162,16 +184,16 @@ class BroomK6221:
         data = []
         retries = 0
         while num_readings > 0 and retries < 10:
-            self.send_command('SYST:COMM:SER:SEND ":DATA?"')
-            time.sleep(1)  # Added sleep to allow the command to process
+            self.send_command_to_2182A(':DATA?')
+            time.sleep(1)
             chunk_data = self.query_command('SYST:COMM:SER:ENT?').split(',')
-            if len(chunk_data) > 1:  # Check to ensure data was received
+            if len(chunk_data) > 1:
                 data.extend(chunk_data)
-                num_readings -= len(chunk_data) // 4  # Assuming 4 elements per reading
-                retries = 0  # Reset retries if data is received
+                num_readings -= len(chunk_data) // 4
+                retries = 0
             else:
-                retries += 1  # Increment retries if no data received
-                print(f"Retry {retries}/10")
+                retries += 1
+                logging.warning(f"Retry {retries}/10")
         return data
 
     def write_csv(self, data):
@@ -181,7 +203,7 @@ class BroomK6221:
             csv_writer.writerow(["Reading", "Timestamp", "Source Current", "Reading Number"])
             for i in range(0, len(data), 4):
                 csv_writer.writerow(data[i:i+4])
-        print(f"Data saved to {csv_path}")
+        logging.info(f"Data saved to {csv_path}")
 
     def user_check(self):
         user_response = input("Do you want to continue with the pulse sweep? (yes/no): ").strip().lower()
@@ -203,8 +225,8 @@ def main():
     broom = BroomK6221()
     broom.parse_and_execute()
     stop_time = time.time()
-    print("done")
-    print(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
+    logging.info("done")
+    logging.info(f"Elapsed Time: {(stop_time - start_time):0.3f}s")
     broom.close()
 
 if __name__ == "__main__":
