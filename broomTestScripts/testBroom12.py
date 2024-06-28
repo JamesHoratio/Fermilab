@@ -74,7 +74,13 @@ class BroomK6221:
         return self.k6.query(command)  # Query the command from the instrument
 
     def send_command_to_2182A(self, command):
+        logging.debug(f'Sending command: {command} to 2182A')
         self.send_command(f'SYST:COMM:SER:SEND "{command}"')  # Send a command to 2182A
+
+    def query_command_to_2182A(self, command):
+        logging.debug(f'Querying command: {command} to 2182A')
+        self.send_command_to_2182A(command)
+        return self.query_command('SYST:COMM:SER:ENT?').strip()
 
     def flush_buffer(self):
         try:
@@ -111,9 +117,11 @@ class BroomK6221:
         self.wait_for_completion()  # Wait for completion
         self.send_command('TRACe:CLEar')  # Clear the trace
         self.wait_for_completion()  # Wait for completion
-        if self.query_command('SOURce:PDELta:NVPResent?').strip() != '1':  # Query presence of 2182A
-            logging.error("Error establishing connection with the 2182A.")  # Log error if not present
-            return False  # Return False if connection not established
+        # Check and disable delta mode on 2182A
+        delta_mode = self.query_command_2182A(':SOURce:PDELta:NVPResent?')
+        if delta_mode == '1':
+            self.send_command_to_2182A(':SOURce:PDELta:STATe OFF')
+            self.wait_for_completion_2182A()
         time.sleep(1)  # Sleep for 1 second
         self.send_command('SYST:BEEP:STAT OFF')  # Disable beep
         self.wait_for_completion()  # Wait for completion
