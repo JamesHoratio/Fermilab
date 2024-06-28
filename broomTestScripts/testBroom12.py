@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import datetime
 import logging
+import pyMeasure
 
 # Constants
 DEBUG_PRINT_COMMANDS = True  # Enable or disable debug printing
@@ -118,7 +119,7 @@ class BroomK6221:
         self.send_command('TRACe:CLEar')  # Clear the trace
         self.wait_for_completion()  # Wait for completion
         # Check and disable delta mode on 2182A
-        delta_mode = self.query_command_2182A(':SOURce:PDELta:NVPResent?')
+        delta_mode = self.query_command_to_2182A(':SOURce:PDELta:NVPResent?')
         if delta_mode == '1':
             self.send_command_to_2182A(':SOURce:PDELta:STATe OFF')
             self.wait_for_completion_2182A()
@@ -161,6 +162,10 @@ class BroomK6221:
         self.wait_for_completion()  # Wait for completion
         self.send_command('SYST:COMM:SER:SEND ":trig:coun 1;:sour ext"')  # Configure trigger and source
         self.wait_for_completion()  # Wait for completion
+        self.send_command('SOUR:PDEL:ARM')
+        self.wait_for_completion()
+        self.send_command('SYST:COMM:SER:SEND ":PDEL:ARM"')
+        self.wait_for_completion_2182A()
 
         return True  # Return True if configuration is successful
 
@@ -171,7 +176,7 @@ class BroomK6221:
             return  # Exit the function
 
         self.flush_buffer()  # Flush the buffer
-        self.send_command_to_2182A('INITiate:IMMediate')
+        self.send_command_to_2182A('INITiate:IMMediate')  # Start the pulse sweep
         self.send_command('INITiate:IMMediate')  # Start the pulse sweep
         time.sleep(5)  # Sleep for 5 seconds
         self.send_command('SOUR:SWE:ABOR')  # Abort the sweep
