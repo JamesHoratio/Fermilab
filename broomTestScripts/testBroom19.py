@@ -2,6 +2,18 @@ import pyvisa
 import time
 import csv
 import matplotlib.pyplot as plt
+import sys
+import logging
+import datetime
+
+date = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+INSTRUMENT_RESOURCE_STRING_6221 = "TCPIP0::169.254.47.133::1394::SOCKET"
+SLEEP_INTERVAL = 0.2
+DEBUG_PRINT_COMMANDS = False
+
+filename = 'pulsed_iv_sweep_data.csv'
+logging.basicConfig(level=logging.DEBUG if DEBUG_PRINT_COMMANDS else logging.INFO)  # Configure logging level
+
 
 class PulsedIVSweep:
     def __init__(self):
@@ -21,6 +33,8 @@ class PulsedIVSweep:
         self.k6221.write_termination = '\n'
         self.k6221.read_termination = '\n'
         print(f"Connected to: {self.k6221.query('*IDN?')}")
+        self.k6221.write("SYST:COMM:SER:SEND '*IDN?'")
+        print(f"Connected to: {self.k6221.query('SYST:COMM:SER:ENT?')}")
 
     def configure_instruments(self):
         # Reset and configure 6221
@@ -91,3 +105,5 @@ class PulsedIVSweep:
 if __name__ == "__main__":
     sweep = PulsedIVSweep()
     sweep.run()
+    print("Pulsed IV sweep complete.")
+    sys.exit(0)
