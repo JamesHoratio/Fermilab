@@ -41,7 +41,7 @@ class BroomK6221:
 
     def connect6221(self):
         try:
-            self.rm = visa.ResourceManager()
+            self.rm = visa.ResourceManager('@py')
             self.k6 = self.rm.open_resource(self.K6221Address, write_termination='\n', read_termination='\n')
             connectmessage = self.k6.query('*IDN?')
             print("Connected Instrument ID:", connectmessage)

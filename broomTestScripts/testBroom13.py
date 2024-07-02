@@ -9,11 +9,42 @@ import logging
 import pymeasure
 from pymeasure.instruments.keithley import Keithley6221
 from pymeasure.instruments.keithley import Keithley2182A
+import pandas as pd
+from time import sleep
+
+
+
 
 Keithley6221.debug = True
 Keithley2182A.debug = True
 
+# Set the input parameters
+data_points = 11 # Number of data points
+start_current = 0 # Start current in mA (0 mA)
+stop_current = 0.01 # Stop current in mA (10 mA)
+step_current = 0.001 # Step current in mA (1 mA)
+delay = 0.001 # Delay in seconds (1 ms)
+pulse_high = 0.01 # Pulse high level in mA (10 mA)
+pulse_low = 0 # Pulse low level in mA (0 mA)
+pulse_count = 11 # Number of pulses
+pulse_width = 500e-9 # Pulse width in seconds (500 ns)
+pulse_delay = 500e-9 # Pulse delay in seconds (500 ns)
+pulse_interval = 1e-6 # Pulse interval in seconds (1 us)
+voltage_range = 0.1 # Voltage range in V (100 mV)
+max_current = 0.01 # Maximum current in mA (10 mA)
+sweep_spacing = 'LIN' # Sweep spacing
 
+# Initialize the instruments
+k6221 = Keithley6221("TCPIP0::169.254.47.133::1394::SOCKET")
+k2182A = Keithley2182A 
+
+
+
+
+class Keithley6221:
+    def __init__(self):
+        self.K6221 = Keithley6221("TCPIP0::169.254.47.133::1394::SOCKET")
+        
 
 # Constants
 DEBUG_PRINT_COMMANDS = True  # Enable or disable debug printing

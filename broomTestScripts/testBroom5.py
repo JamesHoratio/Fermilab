@@ -61,7 +61,7 @@ class BroomK6221:
         self.wait_for_completion()
         self.send_command(":SOUR:FUNC VOLT")
         self.wait_for_completion()
-        self.send_command('SOUR:DEL 0.006')
+        self.send_command('SOUR:DEL 16e-9')
         self.wait_for_completion()
         self.send_command('FORM:ELEM READ,TST,RNUM,SOUR')
         self.wait_for_completion()
