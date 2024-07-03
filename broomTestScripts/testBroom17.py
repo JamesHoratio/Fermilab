@@ -12,7 +12,7 @@ import re
 date = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 INSTRUMENT_RESOURCE_STRING_6221 = "TCPIP0::169.254.47.133::1394::SOCKET"
 SLEEP_INTERVAL = 0.2
-DEBUG_PRINT_COMMANDS = False
+DEBUG_PRINT_COMMANDS = True
 
 filename = 'pulsed_iv_sweep_data.csv'
 logging.basicConfig(level=logging.DEBUG if DEBUG_PRINT_COMMANDS else logging.INFO)  # Configure logging level
@@ -176,12 +176,16 @@ class PulseIVSweep:
         self.send_command('TRAC:CLE')
         time.sleep(0.35)
         self.send_command('TRAC:POIN 5000')
-        time.sleep(0.35)
+        time.sleep(3)
 
         
         
         self.send_command('SOUR:PDEL:ARM')
         time.sleep(4)
+        armstatus = self.query_command('SOUR:PDEL:ARM?')
+        print(f'Arm Status: {armstatus}')
+
+        
 
     def perform_sweep(self):
         print("Performing sweep...")

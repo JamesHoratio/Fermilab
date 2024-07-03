@@ -1,0 +1,74 @@
+{
+    "6221": {
+      "address": "TCPIP0::169.254.47.133::1394::SOCKET",
+      "init_commands": [
+        {"cmd": "*RST"},
+        {"cmd": "SYST:BEEP:STAT OFF"},
+        {"cmd": "FORM:ELEM READ,TST,RNUM,SOUR"}
+      ],
+      "setup_commands": [
+        {"cmd": "SOUR:PDEL:HIGH 0.01"},
+        {"cmd": "SOUR:PDEL:LOW 0"},
+        {"cmd": "SOUR:PDEL:WIDT 110e-6"},
+        {"cmd": "SOUR:PDEL:SDEL 16e-6"},
+        {"cmd": "SOUR:PDEL:INT 5"},
+        {"cmd": "SOUR:PDEL:RANG BEST"},
+        {"cmd": "SOUR:PDEL:SWE ON"},
+        {"cmd": "SOUR:SWE:SPAC LIN"},
+        {"cmd": "SOUR:CURR:STAR 0"},
+        {"cmd": "SOUR:CURR:STOP 0.01"},
+        {"cmd": "SOUR:CURR:POIN 11"},
+        {"cmd": "TRAC:CLE"},
+        {"cmd": "TRAC:POIN 5000"}
+      ],
+      "query_commands": [
+        {"cmd": "SYST:BEEP:STAT?", "expected": "0"},
+        {"cmd": "FORM:ELEM?", "expected": "READ,TST,RNUM,SOUR"},
+        {"cmd": "SOUR:PDEL:SWE?", "expected": "1"},
+        {"cmd": "SOUR:SWE:SPAC?", "expected": "LIN"},
+        {"cmd": "TRAC:POIN?", "expected": "5000"},
+        {"cmd": "SOUR:CURR:STAR?", "expected": "0"},
+        {"cmd": "SOUR:CURR:STOP?", "expected": "0.01"},
+        {"cmd": "SOUR:CURR:POIN?", "expected": "11"},
+        {"cmd": "SOUR:PDEL:HIGH?", "expected": "0.01"},
+        {"cmd": "SOUR:PDEL:LOW?", "expected": "0"},
+        {"cmd": "SOUR:PDEL:WIDT?", "expected": "110e-6"},
+        {"cmd": "SOUR:PDEL:SDEL?", "expected": "16e-6"},
+        {"cmd": "SOUR:PDEL:INT?", "expected": "5"},
+        {"cmd": "SOUR:PDEL:RANG?", "expected": "BEST"},
+        {"cmd": "SOUR:PDEL:NVPR?", "expected": "1"}
+      ],
+      "2182A_commands": [
+        {"cmd": "*RST"},
+        {"cmd": "SYST:PRES"},
+        {"cmd": "*CLS"},
+        {"cmd": "INIT:CONT OFF"},
+        {"cmd": "ABORT"},
+        {"cmd": "SYST:BEEP:STAT OFF"},
+        {"cmd": "SENS:FUNC \"VOLT:DC\""},
+        {"cmd": "SENS:CHAN 1"},
+        {"cmd": "SENS:VOLT:RANG 10"},
+        {"cmd": "FORM:ELEM READ"},
+        {"cmd": "SENS:VOLT:NPLC 0.01"},
+        {"cmd": "TRIG:COUN 1"},
+        {"cmd": "SAMP:COUN 11"},
+        {"cmd": "TRAC:POIN 1000"},
+        {"cmd": "TRIG:DEL 0"},
+        {"cmd": "TRIG:SOUR EXT"}
+      ],
+      "2182A_query_commands": [
+        {"cmd": "INIT:CONT?", "expected": "0"},
+        {"cmd": "SYST:BEEP:STAT?", "expected": "0"},
+        {"cmd": "SENS:FUNC?", "expected": "\"VOLT:DC\""},
+        {"cmd": "SENS:CHAN?", "expected": "1"},
+        {"cmd": "SENS:VOLT:RANG?", "expected": "10"},
+        {"cmd": "FORM:ELEM?", "expected": "READ"},
+        {"cmd": "SENS:VOLT:NPLC?", "expected": "0.01"},
+        {"cmd": "TRIG:COUN?", "expected": "1"},
+        {"cmd": "SAMP:COUN?", "expected": "11"},
+        {"cmd": "TRAC:POIN?", "expected": "1000"},
+        {"cmd": "TRIG:DEL?", "expected": "0"},
+        {"cmd": "TRIG:SOUR?", "expected": "EXT"}
+      ]
+    }
+  }
