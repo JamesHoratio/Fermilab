@@ -5,6 +5,11 @@ import time
 import numpy as np
 from config import *
 
+import pyvisa
+import time
+import numpy as np
+from config import *
+
 class PulsedIVTest:
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
@@ -22,10 +27,10 @@ class PulsedIVTest:
             self.instrument.timeout = TIMEOUT
             self.instrument.write_termination = '\n'
             self.instrument.read_termination = '\n'
-            print(CONNECTION_SUCCESS)
+            self.log_message(CONNECTION_SUCCESS)
             return True
         except pyvisa.errors.VisaIOError as e:
-            print(f"{CONNECTION_ERROR} {str(e)}")
+            self.log_message(f"{CONNECTION_ERROR} {str(e)}")
             return False
 
     def disconnect(self):
@@ -33,20 +38,29 @@ class PulsedIVTest:
             self.instrument.close()
             self.instrument = None
         self.rm.close()
-        print(DISCONNECTION_MESSAGE)
+        self.log_message(DISCONNECTION_MESSAGE)
 
     def reset_6221(self):
         self.instrument.write('*RST')
         time.sleep(SETUP_DELAY)
+        self.log_message("6221 has been reset.")
 
     def query_6221(self):
-        return self.instrument.query('*IDN?')
+        response = self.instrument.query('*IDN?')
+        time.sleep(QUERY_DELAY)
+        self.log_message(f"6221 query response: {response}")
+        return response
 
     def reset_2182a(self):
         self.send_command_to_2182A('*RST')
+        time.sleep(SETUP_DELAY)
+        self.log_message("2182A has been reset.")
 
     def query_2182a(self):
-        return self.query_2182A('*IDN?')
+        response = self.query_2182A('*IDN?')
+        time.sleep(QUERY_DELAY)
+        self.log_message(f"2182A query response: {response}")
+        return response
 
     def set_linear_staircase(self):
         self.instrument.write('SOUR:SWE:SPAC LIN')
@@ -121,9 +135,16 @@ class PulsedIVTest:
         time.sleep(SETUP_DELAY)
 
     def set_2182a_voltage_range(self, voltage_range):
-        voltage_range_values = {'100 mV': 0.1, '1 V': 1, '10 V': 10, '100 V': 100}
+        voltage_range_values = {'100 mV': 0.1, '1 V': 1, '10 V': 10, '100 V': 100, '10 mA': 'CURR:10mA'}
         numerical_voltage_range = voltage_range_values[voltage_range]
-        self.send_command_to_2182A(f':SENS:VOLT:RANG {numerical_voltage_range}')
+        if voltage_range == '10 mA':
+            self.send_command_to_2182A(f':SENS:FUNC "CURR"')
+            self.send_command_to_2182A(f':SENS:CURR:RANG {numerical_voltage_range}')
+        else:
+            self.send_command_to_2182A(f':SENS:FUNC "VOLT"')
+            self.send_command_to_2182A(f':SENS:VOLT:RANG {numerical_voltage_range}')
+        time.sleep(SETUP_DELAY)
+        self.log_message(f"2182A range set to {voltage_range}")
 
     def configure_2182a(self):
         commands = [
@@ -139,7 +160,9 @@ class PulsedIVTest:
         ]
         for command in commands:
             self.send_command_to_2182A(command)
-    
+            time.sleep(SETUP_DELAY)
+        self.log_message("2182A configured.")
+
     def configure_trigger_link(self):
         # Configure 6221
         self.instrument.write(':TRIG:SOUR TLINK')
@@ -152,43 +175,18 @@ class PulsedIVTest:
         # Configure 2182A
         self.send_command_to_2182A(':TRIG:SOUR TLINK')
         self.send_command_to_2182A(':TRIG:ILIN 1')
+        time.sleep(SETUP_DELAY)
+        self.log_message("Trigger link configured.")
 
     def set_compliance_abort(self, state):
         self.instrument.write(f':SOUR:CURR:PROT:MODE {"LATE" if state else "RSCD"}')
-
-    def arm(self):
-        self.instrument.write(':SOUR:PDEL:ARM')
-
-    def check_arm_status(self):
-        return self.instrument.query(':SOUR:PDEL:ARM?')
-
-    def initiate(self):
-        self.instrument.write(':INIT:IMM')
-
-    def abort(self):
-        self.instrument.write(':ABOR')
-
-    def get_data(self):
-        data = self.instrument.query_ascii_values(':TRAC:DATA?')
-        self.U = data[::2]  # Odd indices are voltage readings
-        self.I = data[1::2]  # Even indices are current readings
-        return np.array(self.U), np.array(self.I)
-
-    def send_command_to_2182A(self, command):
-        self.instrument.write(f':SYST:COMM:SER:SEND "{command}"')
-        time.sleep(0.2)  # Wait for command to be processed
-
-    def query_2182A(self, query):
-        self.send_command_to_2182A(query)
-        return self.instrument.query(':SYST:COMM:SER:ENT?')
-
-    def log_message(self, message):
-        # This method can be connected to the GUI's log_to_terminal method
-        print(message)  # Default behavior is to print to console
+        time.sleep(SETUP_DELAY)
+        self.log_message(f"Compliance abort set to {'LATE' if state else 'RSCD'}")
 
     def setup_pulsed_sweep(self, start, stop, num_pulses, sweep_type, voltage_range, 
                            pulse_width, pulse_delay, pulse_interval, voltage_compliance,
                            pulse_off_level, num_off_measurements):
+        self.log_message("Setting up pulsed sweep...")
         self.reset_6221()
         self.reset_2182a()
         self.configure_2182a()
@@ -198,7 +196,7 @@ class PulsedIVTest:
         self.set_start_current(start)
         self.set_stop_current(stop)
         self.set_step((stop-start)/(num_pulses-1))
-        self.set_linear_staircase() if sweep_type.upper() == 'LINEAR' else self.set_logarithmic_staircase()
+        self.set_sweep_type(sweep_type)
         self.set_pulse_width(pulse_width)
         self.set_pulse_delay(pulse_delay)
         self.set_pulse_interval(pulse_interval)
@@ -211,10 +209,92 @@ class PulsedIVTest:
         self.clean_buffer()
         self.set_buffer_size()
 
+        self.log_message("Pulsed sweep setup complete.")
+        self.verify_setup()
+
+    def verify_setup(self):
+        self.log_message("Verifying setup...")
+        # Add verification for each parameter
+        self.verify_parameter(':SOUR:CURR:START?', self.start, "Start current")
+        self.verify_parameter(':SOUR:CURR:STOP?', self.stop, "Stop current")
+        self.verify_parameter(':SOUR:CURR:STEP?', self.step, "Current step")
+        self.verify_parameter(':SOUR:SWE:SPAC?', self.sweep_type, "Sweep type")
+        self.verify_parameter(':SOUR:PDEL:WIDT?', self.pulse_width, "Pulse width")
+        self.verify_parameter(':SOUR:PDEL:SDEL?', self.pulse_delay, "Pulse delay")
+        self.verify_parameter(':SOUR:PDEL:INT?', self.pulse_interval, "Pulse interval")
+        self.verify_parameter(':SENS:VOLT:PROT?', self.voltage_compliance, "Voltage compliance")
+        self.verify_parameter(':SOUR:PDEL:LOW?', self.pulse_off_level, "Pulse off level")
+        self.verify_parameter(':SOUR:PDEL:COUN?', self.pulse_count, "Pulse count")
+        self.log_message("Setup verification complete.")
+
+    def verify_parameter(self, query, expected_value, parameter_name):
+        actual_value = self.instrument.query(query).strip()
+        time.sleep(QUERY_DELAY)
+        if float(actual_value) == float(expected_value):
+            self.log_message(f"{parameter_name} verified: {actual_value}")
+        else:
+            self.log_message(f"Warning: {parameter_name} mismatch. Expected: {expected_value}, Actual: {actual_value}")
+
+    def arm(self):
+        self.instrument.write(':SOUR:PDEL:ARM')
+        time.sleep(SETUP_DELAY)
+        self.log_message("Instrument armed.")
+
+    def check_arm_status(self):
+        status = self.instrument.query(':SOUR:PDEL:ARM?')
+        time.sleep(QUERY_DELAY)
+        self.log_message(f"Arm status: {status}")
+        return status
+
+    def initiate(self):
+        self.instrument.write(':INIT:IMM')
+        time.sleep(SETUP_DELAY)
+        self.log_message("Sweep initiated.")
+
+    def abort(self):
+        self.instrument.write(':ABOR')
+        time.sleep(SETUP_DELAY)
+        self.log_message("Sweep aborted.")
+
+    def get_data(self):
+        self.log_message("Retrieving data...")
+        data = self.instrument.query_ascii_values(':TRAC:DATA?')
+        time.sleep(QUERY_DELAY)
+        self.U = data[::2]  # Odd indices are voltage readings
+        self.I = data[1::2]  # Even indices are current readings
+        self.log_message(f"Retrieved {len(self.U)} data points.")
+        return np.array(self.U), np.array(self.I)
+
+    def send_command_to_2182A(self, command):
+        self.instrument.write(f':SYST:COMM:SER:SEND "{command}"')
+        time.sleep(SETUP_DELAY)
+
+    def query_2182A(self, query):
+        self.send_command_to_2182A(query)
+        time.sleep(QUERY_DELAY)
+        return self.instrument.query(':SYST:COMM:SER:ENT?')
+
+    def log_message(self, message):
+        # This method will be connected to the GUI's log_to_terminal method
+        print(message)  # Default behavior is to print to console
+
+    def read_errors(self):
+        errors = []
+        while True:
+            error = self.instrument.query(':SYST:ERR?')
+            time.sleep(QUERY_DELAY)
+            if error.startswith('0,'):  # No error
+                break
+            errors.append(error)
+        return errors
+
     def run_pulsed_sweep(self, start, stop, num_pulses, sweep_type, voltage_range, 
                          pulse_width, pulse_delay, pulse_interval, voltage_compliance,
                          pulse_off_level, num_off_measurements, enable_compliance_abort):
         try:
+            start_time = time.time()
+            self.log_message("Starting pulsed sweep...")
+            
             self.setup_pulsed_sweep(start, stop, num_pulses, sweep_type, voltage_range,
                                     pulse_width, pulse_delay, pulse_interval, voltage_compliance,
                                     pulse_off_level, num_off_measurements)
@@ -226,27 +306,42 @@ class PulsedIVTest:
             arm_status = self.check_arm_status()
             self.log_message(f"Arm status: {arm_status}")
             
-            user_response = input("Do you want to continue with the sweep? (yes/no): ")
-            if user_response.lower() != 'yes':
-                self.log_message("Sweep aborted by user.")
-                return None, None
-            
             self.log_message("Initiating sweep...")
             self.initiate()
             
             self.log_message("Sweep in progress...")
             time.sleep(num_pulses * float(pulse_interval) + 1)  # Estimate sweep time
             
-            self.log_message("Retrieving data...")
             voltage, current = self.get_data()
             
-            self.log_message("Sweep completed successfully.")
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            self.log_message(f"Sweep completed successfully in {elapsed_time:.2f} seconds.")
+            
             return voltage, current
         
         except Exception as e:
             self.log_message(f"An error occurred during the sweep: {str(e)}")
             self.abort()
             return None, None
+        finally:
+            errors = self.read_errors()
+            if errors:
+                self.log_message("Errors occurred during the sweep:")
+                for error in errors:
+                    self.log_message(error)
+            else:
+                self.log_message("No errors detected during the sweep.")
+
+    def calc_data_delay(self):
+        return ((self.stop - self.start) / self.step) * self.delay
+
+    def set_sweep_type(self, sweep_type):
+        if sweep_type.upper() == 'LINEAR':
+            self.set_linear_staircase()
+        else:
+            self.set_logarithmic_staircase()
+        time.sleep(SETUP_DELAY)
 
 # Usage example
 if __name__ == "__main__":
@@ -259,3 +354,4 @@ if __name__ == "__main__":
         test.disconnect()
     else:
         print("Failed to connect to the instrument.")
+        
