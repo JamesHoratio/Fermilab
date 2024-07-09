@@ -166,7 +166,7 @@ class PulsedIVTest:
         self.instrument.write(':INIT:IMM')
 
     def abort(self):
-        self.instrument.write(':ABOR')
+        self.instrument.write(':SOUR:SWE:ABORT')
 
     def get_data(self):
         data = self.instrument.query_ascii_values(':TRAC:DATA?')
