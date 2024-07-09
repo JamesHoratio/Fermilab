@@ -20,42 +20,48 @@ class Keithley6221():
         self.step = 0
         self.U = []
         self.I = []
+        self.rm = pyvisa.ResourceManager()
+        self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
+        self.instrument.timeout = TIMEOUT
+        self.instrument.write_termination = '\n'
+        self.instrument.read_termination = '\n'
 
     def connect(self) -> None:
         """Connect to the device at its address"""
-        self.connection = self.rm.open_resource(INSTRUMENT_ADDRESS)
+        self.connection = self.rm.open_resource(INSTRUMENT_ADDRESS, timeout = TIMEOUT, write_termination = '\n', read_termination = '\n'),
         print(f'Connected successfully!')
 
     def getStatus(self) -> None:
         """Querying Identification from instrument."""
-        print(f'Information about this device: '
-              f'{self.connection.query("*IDN?")}')
+        idn = ''
+        idn = self.instrument.query('*IDN?')
+        print(f'Information about this device: ' + idn)
 
     def reset(self) -> None:
         """Restore default settings."""
-        self.connection.write('*RST')
+        self.instrument.write('*RST')
         print(f'Restored to default settings!')
 
     def setLinearStaircase(self) -> None:
         """Setting linear sweep."""
-        self.connection.write(f'SOUR:SWE:SPAC LIN')
+        self.instrument.write('SOUR:SWE:SPAC LIN')
 
     def setStartCurrent(self) -> None:
         """Setting the initial current value."""
         startCurrent = input('Set initial current: ')
-        self.connection.write(f'SOUR:CURR:STAR ' + startCurrent)
+        self.instrument.write(f'SOUR:CURR:STAR ' + startCurrent)
         self.start = float(startCurrent)
 
     def setStopCurrent(self) -> None:
         """Setting the final current value = maxiumum current amplitude"""
         stopCurrent = input('Set stop current: ')
-        self.connection.write(f'SOUR:CURR:STOP ' + stopCurrent)
+        self.instrument.write(f'SOUR:CURR:STOP ' + stopCurrent)
         self.stop = float(stopCurrent)
 
     def setStep(self) -> None:
         """Setting the current amplitude increasing step."""
         step = input('Set amplitude increase stepsize: ')
-        self.connection.write(f'SOUR:CURR:STEP ' + step)
+        self.instrument.write(f'SOUR:CURR:STEP ' + step)
         self.step = float(step)
 
     def calcDataDelay(self) -> int:
@@ -66,7 +72,7 @@ class Keithley6221():
     def setDelay(self) -> None:
         """Setting the wait time between pulses."""
         delay = input('Set the pulse delay: ')
-        self.connection.write(f'SOUR:DEL ' + delay)
+        self.instrument.write(f'SOUR:DEL ' + delay)
         self.delay = float(delay)
 
     def setSpan(self) -> None:
@@ -75,12 +81,12 @@ class Keithley6221():
 
         [BEST] -- Uses optimal range to accomodate all sweep steps
         """
-        self.connection.write(f'SOUR:PDEL:RANG BEST')
+        self.instrument.write(f'SOUR:PDEL:RANG BEST')
 
     def setCurrentCompliance(self) -> None:
         """Set output voltage limitation."""
         currentCompliance = input('Set voltage limit: ')
-        self.connection.write(f'SOUR:CURR:COMP ' + currentCompliance)
+        self.instrument.write(f'SOUR:CURR:COMP ' + currentCompliance)
 
     def setTriaxOutputLow(self) -> None:
         """Low to earth grounding output.
@@ -89,48 +95,48 @@ class Keithley6221():
             [OFF] -- Disable output
             """
         triaxOutputLow = input('Output to ground: ')
-        self.connection.write(f'OUTP:LTE ' + triaxOutputLow)
+        self.instrument.write(f'OUTP:LTE ' + triaxOutputLow)
 
     def setLowSignal(self) -> None:
         """Setting the signal level low"""
-        self.connection.write(f'SOUR:PDEL:LOW 0')
+        self.instrument.write(f'SOUR:PDEL:LOW 0')
 
     def setHighSignal(self) -> None:
         """Setting the signal level high (optional)."""
         highSignal = input('Set the signal level high to: ')
-        self.connection.write(f'SOUR:PDEL:HIGH ' + highSignal)
+        self.instrument.write(f'SOUR:PDEL:HIGH ' + highSignal)
 
     def setImpulseInterval(self) -> None:
         """Setting the pulse interval."""
         impulseInterval = input('Set the pulse interval: ')
-        self.connection.write(f'SOUR:PDEL:INT ' + impulseInterval)
+        self.instrument.write(f'SOUR:PDEL:INT ' + impulseInterval)
 
     def setWidth(self) -> None:
         """Setting the pulse width."""
         width = input('Set the pulse width: ')
-        self.connection.write(f'SOUR:PDEL:WIDT ' + width)
+        self.instrument.write(f'SOUR:PDEL:WIDT ' + width)
 
     def setSweepMode(self) -> None:
         """Initializing the sweep function."""
-        self.connection.write(f'SOUR:PDEL:SWE ON')
+        self.instrument.write(f'SOUR:PDEL:SWE ON')
 
     def setDelayOfMode(self) -> None:
         """Setting the sweep delay time."""
         delayOfMode = input('Set the mode delay: ')
-        self.connection.write(f'SOUR:PDEL:SDEL ' + delayOfMode)
+        self.instrument.write(f'SOUR:PDEL:SDEL ' + delayOfMode)
 
     def setPulseCount(self) -> None:
         """Meter setting. Sets the buffer size."""
         pulseCount = input('Set the number of pulses: ')
-        self.connection.write('SOUR:PDEL:COUN ' + pulseCount)
+        self.instrument.write('SOUR:PDEL:COUN ' + pulseCount)
 
     def setBufSize(self) -> None:
         """Setting the buffer size."""
-        self.connection.write('TRAC:POIN 5000')
+        self.instrument.write('TRAC:POIN 5000')
 
     def cleanBuffer(self) -> None:
         """Clearning buffer"""
-        self.connection.write('TRAC:CLE')
+        self.instrument.write('TRAC:CLE')
 
     def setInterruption(self) -> None:
         """
@@ -140,16 +146,16 @@ class Keithley6221():
         [OFF] -- Function disabled
         """
         turnInterruption = input('Termination: ')
-        self.connection.write('TRAC:DCON:CAB ' + turnInterruption)
+        self.instrument.write('TRAC:DCON:CAB ' + turnInterruption)
 
     def initialise(self) -> None:
         """Initializes the pulse delta test."""
-        self.connection.write('SOUR:PDEL:ARM')
+        self.instrument.write('SOUR:PDEL:ARM')
 
     def run(self) -> None:
         """Runs a pulse delta test."""
         print('The process has started...')
-        self.connection.write('INIT:IMM')
+        self.instrument.write('INIT:IMM')
 
         # Waiting for the process to complete and not interrupting it
         time.sleep(self.calcDataDelay() + 1)
@@ -157,12 +163,12 @@ class Keithley6221():
 
     def complete(self) -> None:
         """Stopping the pulse delta test."""
-        self.connection.write('SOUR:SWE:ABOR')
+        self.instrument.write('SOUR:SWE:ABOR')
 
     def dataProcessing(self) -> None:
         """Reading measurements from the Keithley6221 buffer."""
         time.sleep(5)
-        data = str(self.connection.query('TRAC:DATA?'))
+        data = str(self.instrument.query('TRAC:DATA?'))
         dataList = data.split(",")[::2]
 
         for number in dataList:
@@ -228,3 +234,25 @@ def draw(U, I) -> None:
 def showAllGraphs() -> None:
     """Shows all plots on one window for clarity."""
     plt.show()
+
+if __name__ == "__main__":
+    test = Keithley6221()
+    test.connect()
+    test.getStatus()
+    test.reset()
+    test.configureSweep()
+    test.pulseSweep()
+    test.setBufSize()
+    test.cleanBuffer()
+    time.sleep(5)
+    test.initialise()
+    time.sleep(5)
+    test.run()
+    time.sleep(5)
+    test.dataProcessing()
+    saveToFile(test.U, test.I, fileCreationCounter)
+    draw(test.U, test.I)
+    showAllGraphs()
+    test.complete()
+    test.instrument.close()
+    print('Disconnected successfully!')

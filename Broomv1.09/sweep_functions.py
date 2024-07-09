@@ -15,6 +15,13 @@ class PulsedIVTest:
         self.delay = 0
         self.U = []
         self.I = []
+        self.sweep_type = ''
+        self.pulse_width = 0
+        self.pulse_delay = 0
+        self.pulse_interval = 0
+        self.voltage_compliance = 0
+        self.pulse_off_level = 0
+        self.pulse_count = 0
 
     def connect(self):
         try:
@@ -395,7 +402,7 @@ class PulsedIVTest:
         return ((self.stop - self.start) / self.step) * self.delay
 
     def set_sweep_type(self, sweep_type):
-        if sweep_type.upper() == 'LINEAR':
+        if sweep_type.upper() == 'LIN':
             self.set_linear_staircase()
         else:
             self.set_logarithmic_staircase()

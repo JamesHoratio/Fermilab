@@ -5,11 +5,6 @@ import time
 import numpy as np
 from config import *
 
-import pyvisa
-import time
-import numpy as np
-from config import *
-
 class PulsedIVTest:
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
@@ -20,7 +15,7 @@ class PulsedIVTest:
         self.delay = 0
         self.U = []
         self.I = []
-        self.sweep_type = 'LINEAR'
+        self.sweep_type = ''
         self.pulse_width = 0
         self.pulse_delay = 0
         self.pulse_interval = 0
@@ -34,6 +29,7 @@ class PulsedIVTest:
             self.instrument.timeout = TIMEOUT
             self.instrument.write_termination = '\n'
             self.instrument.read_termination = '\n'
+            self.verify_instrument_identity()
             self.log_message(CONNECTION_SUCCESS)
             return True
         except pyvisa.errors.VisaIOError as e:
@@ -47,25 +43,90 @@ class PulsedIVTest:
         self.rm.close()
         self.log_message(DISCONNECTION_MESSAGE)
 
+    def set_long_timeout(self):
+        self.instrument.timeout = 30000  # 30 seconds
+
+    def reset_timeout(self):
+        self.instrument.timeout = TIMEOUT
+
+    def verify_instrument_identity(self):
+        idn = self.robust_query('*IDN?')
+        if '6221' not in idn:
+            raise Exception("Connected to wrong instrument or communication error")
+
+    def robust_query(self, query, retries=3, timeout=5):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query(query).strip()
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError as e:
+                self.log_message(f"Timeout occurred for query '{query}'. Retrying... (Attempt {attempt + 1})")
+                self.log_message(f"Error details: {str(e)}")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query: {query}")
+
+    def robust_query_ascii_values(self, query, retries=3, timeout=10):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query_ascii_values(query)
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError as e:
+                self.log_message(f"Timeout occurred for query_ascii_values '{query}'. Retrying... (Attempt {attempt + 1})")
+                self.log_message(f"Error details: {str(e)}")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query_ascii_values: {query}")
+
+    def clear_buffers(self):
+        self.instrument.write('*CLS')  # Clear status registers and error queue
+        self.instrument.read()  # Read and discard any lingering output
+        time.sleep(SETUP_DELAY)
+
+    def clear_buffers_2182A(self):
+        self.send_command_to_2182A('*CLS')
+        self.query_2182A('*OPC?')
+        time.sleep(SETUP_DELAY)
+
+    def wait_for_operation_complete(self):
+        self.instrument.query('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def wait_for_operation_complete_2182A(self):
+        self.query_2182A('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def reset_communication(self):
+        self.instrument.close()
+        time.sleep(1)
+        self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
+        self.instrument.timeout = TIMEOUT
+
     def reset_6221(self):
         self.instrument.write('*RST')
-        time.sleep(SETUP_DELAY)
+        time.sleep(LONG_COMMAND_DELAY)
+        self.wait_for_operation_complete()
+        self.clear_buffers()
         self.log_message("6221 has been reset.")
 
     def query_6221(self):
-        response = self.instrument.query('*IDN?')
-        time.sleep(QUERY_DELAY)
+        response = self.robust_query('*IDN?')
         self.log_message(f"6221 query response: {response}")
         return response
 
     def reset_2182a(self):
         self.send_command_to_2182A('*RST')
-        time.sleep(SETUP_DELAY)
+        time.sleep(LONG_COMMAND_DELAY)
+        self.wait_for_operation_complete_2182A()
+        self.clear_buffers_2182A()
         self.log_message("2182A has been reset.")
 
     def query_2182a(self):
         response = self.query_2182A('*IDN?')
-        time.sleep(QUERY_DELAY)
         self.log_message(f"2182A query response: {response}")
         return response
 
@@ -191,37 +252,45 @@ class PulsedIVTest:
         self.log_message(f"Compliance abort set to {'LATE' if state else 'RSCD'}")
 
     def setup_pulsed_sweep(self, start, stop, num_pulses, sweep_type, voltage_range, 
-                           pulse_width, pulse_delay, pulse_interval, voltage_compliance,
-                           pulse_off_level, num_off_measurements):
+                       pulse_width, pulse_delay, pulse_interval, voltage_compliance,
+                       pulse_off_level, num_off_measurements):
         self.log_message("Setting up pulsed sweep...")
-        self.reset_6221()
-        self.reset_2182a()
-        self.configure_2182a()
-        self.configure_trigger_link()
+        try:
+            self.set_long_timeout()
 
-        self.set_2182a_voltage_range(voltage_range)
-        self.set_start_current(start)
-        self.set_stop_current(stop)
-        self.set_step((stop-start)/(num_pulses-1))
-        self.set_sweep_type(sweep_type)
-        self.set_pulse_width(pulse_width)
-        self.set_pulse_delay(pulse_delay)
-        self.set_pulse_interval(pulse_interval)
-        self.set_current_compliance(voltage_compliance)
-        self.set_span()
-        self.set_pulse_low_level(pulse_off_level)
-        self.set_low_measure_enable(num_off_measurements)
-        self.set_pulse_count(num_pulses)
-        self.set_sweep_mode('ON')
-        self.clean_buffer()
-        self.set_buffer_size()
+            self.reset_6221()
+            self.reset_2182a()
+            self.configure_2182a()
+            self.configure_trigger_link()
 
-        self.log_message("Pulsed sweep setup complete.")
-        self.verify_setup()
+            self.set_2182a_voltage_range(voltage_range)
+            self.set_start_current(start)
+            self.set_stop_current(stop)
+            self.set_step((stop-start)/(num_pulses-1))
+            self.set_sweep_type(sweep_type)
+            self.set_pulse_width(pulse_width)
+            self.set_pulse_delay(pulse_delay)
+            self.set_pulse_interval(pulse_interval)
+            self.set_current_compliance(voltage_compliance)
+            self.set_span()
+            self.set_pulse_low_level(pulse_off_level)
+            self.set_low_measure_enable(num_off_measurements)
+            self.set_pulse_count(num_pulses)
+            self.set_sweep_mode('ON')
+            self.clean_buffer()
+            self.set_buffer_size()
+
+            self.log_message("Pulsed sweep setup complete.")
+            self.verify_setup()
+        except Exception as e:
+            self.log_message(f"Error in setup_pulsed_sweep: {str(e)}")
+            raise
+        finally:
+            self.reset_timeout()
+
 
     def verify_setup(self):
         self.log_message("Verifying setup...")
-        # Add verification for each parameter
         self.verify_parameter(':SOUR:CURR:START?', self.start, "Start current")
         self.verify_parameter(':SOUR:CURR:STOP?', self.stop, "Stop current")
         self.verify_parameter(':SOUR:CURR:STEP?', self.step, "Current step")
@@ -237,19 +306,26 @@ class PulsedIVTest:
     def verify_parameter(self, query, expected_value, parameter_name):
         actual_value = self.instrument.query(query).strip()
         time.sleep(QUERY_DELAY)
-        if float(actual_value) == float(expected_value):
-            self.log_message(f"{parameter_name} verified: {actual_value}")
-        else:
-            self.log_message(f"Warning: {parameter_name} mismatch. Expected: {expected_value}, Actual: {actual_value}")
-
+        try:
+            if isinstance(expected_value, (int, float)):
+                if abs(float(actual_value) - float(expected_value)) < 1e-6:
+                    self.log_message(f"{parameter_name} verified: {actual_value}")
+                else:
+                    self.log_message(f"Warning: {parameter_name} mismatch. Expected: {expected_value}, Actual: {actual_value}")
+            else:
+                if actual_value == str(expected_value):
+                    self.log_message(f"{parameter_name} verified: {actual_value}")
+                else:
+                    self.log_message(f"Warning: {parameter_name} mismatch. Expected: {expected_value}, Actual: {actual_value}")
+        except ValueError:
+            self.log_message(f"Warning: Could not verify {parameter_name}. Received: {actual_value}")
     def arm(self):
         self.instrument.write(':SOUR:PDEL:ARM')
         time.sleep(SETUP_DELAY)
         self.log_message("Instrument armed.")
 
     def check_arm_status(self):
-        status = self.instrument.query(':SOUR:PDEL:ARM?')
-        time.sleep(QUERY_DELAY)
+        status = self.robust_query(':SOUR:PDEL:ARM?')
         self.log_message(f"Arm status: {status}")
         return status
 
@@ -265,8 +341,7 @@ class PulsedIVTest:
 
     def get_data(self):
         self.log_message("Retrieving data...")
-        data = self.instrument.query_ascii_values(':TRAC:DATA?')
-        time.sleep(QUERY_DELAY)
+        data = self.robust_query_ascii_values(':TRAC:DATA?')
         self.U = data[::2]  # Odd indices are voltage readings
         self.I = data[1::2]  # Even indices are current readings
         self.log_message(f"Retrieved {len(self.U)} data points.")
@@ -279,54 +354,57 @@ class PulsedIVTest:
     def query_2182A(self, query):
         self.send_command_to_2182A(query)
         time.sleep(QUERY_DELAY)
-        return self.instrument.query(':SYST:COMM:SER:ENT?')
+        return self.robust_query(':SYST:COMM:SER:ENT?')
 
     def log_message(self, message):
-        # This method will be connected to the GUI's log_to_terminal method
         print(message)  # Default behavior is to print to console
 
     def read_errors(self):
         errors = []
         while True:
-            error = self.instrument.query(':SYST:ERR?')
-            time.sleep(QUERY_DELAY)
+            error = self.robust_query(':SYST:ERR?')
             if error.startswith('0,'):  # No error
                 break
             errors.append(error)
         return errors
 
     def run_pulsed_sweep(self, start, stop, num_pulses, sweep_type, voltage_range, 
-                         pulse_width, pulse_delay, pulse_interval, voltage_compliance,
-                         pulse_off_level, num_off_measurements, enable_compliance_abort):
+                     pulse_width, pulse_delay, pulse_interval, voltage_compliance,
+                     pulse_off_level, num_off_measurements, enable_compliance_abort):
         try:
             start_time = time.time()
             self.log_message("Starting pulsed sweep...")
-            
+
             self.setup_pulsed_sweep(start, stop, num_pulses, sweep_type, voltage_range,
                                     pulse_width, pulse_delay, pulse_interval, voltage_compliance,
                                     pulse_off_level, num_off_measurements)
             self.set_compliance_abort(enable_compliance_abort)
-            
+
             self.log_message("Setup complete. Arming instruments...")
             self.arm()
-            
+
             arm_status = self.check_arm_status()
             self.log_message(f"Arm status: {arm_status}")
-            
+
+            if arm_status.strip() != '1':
+                raise Exception(f"Instrument not armed properly. Arm status: {arm_status}")
+
             self.log_message("Initiating sweep...")
             self.initiate()
-            
+
             self.log_message("Sweep in progress...")
-            time.sleep(num_pulses * float(pulse_interval) + 1)  # Estimate sweep time
-            
+            estimated_time = num_pulses * float(pulse_interval) + 1
+            self.log_message(f"Estimated sweep time: {estimated_time:.2f} seconds")
+            time.sleep(estimated_time)
+
             voltage, current = self.get_data()
-            
+
             end_time = time.time()
             elapsed_time = end_time - start_time
             self.log_message(f"Sweep completed successfully in {elapsed_time:.2f} seconds.")
-            
+
             return voltage, current
-        
+
         except Exception as e:
             self.log_message(f"An error occurred during the sweep: {str(e)}")
             self.abort()
@@ -346,19 +424,27 @@ class PulsedIVTest:
     def set_sweep_type(self, sweep_type):
         if sweep_type.upper() == 'LINEAR':
             self.set_linear_staircase()
+            self.sweep_type = 'LIN'
         else:
             self.set_logarithmic_staircase()
+            self.sweep_type = 'LOG'
         time.sleep(SETUP_DELAY)
 
 # Usage example
 if __name__ == "__main__":
     test = PulsedIVTest()
-    if test.connect():
-        v, i = test.run_pulsed_sweep(0, 10e-3, 11, 'LINEAR', '100 mV', 0.0002, 0.0001, 5, 10, 0, 2, True)
-        if v is not None and i is not None:
-            print("Voltage:", v)
-            print("Current:", i)
+    try:
+        if test.connect():
+            v, i = test.run_pulsed_sweep(0, 10e-3, 11, 'LINEAR', '100 mV', 0.0002, 0.0001, 5, 10, 0, 2, True)
+            if v is not None and i is not None:
+                print("Voltage:", v)
+                print("Current:", i)
+            else:
+                print("Measurement failed.")
+        else:
+            print("Failed to connect to the instrument.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+    finally:
         test.disconnect()
-    else:
-        print("Failed to connect to the instrument.")
-        
+    

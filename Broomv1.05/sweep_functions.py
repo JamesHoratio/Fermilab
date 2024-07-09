@@ -106,7 +106,7 @@ class PulsedIVTest:
 
     def data_processing(self):
         time.sleep(DATA_PROCESSING_DELAY)
-        data = self.instrument.query('TRAC:DATA?')
+        data = self.instrument.query('TRAC:DATA?').strip()
         data_list = data.split(",")[::2]
         self.U = [float(number) for number in data_list]
         self.I = [self.start + i * self.step for i in range(len(self.U))]

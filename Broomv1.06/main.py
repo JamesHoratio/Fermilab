@@ -4,7 +4,7 @@ import time
 from gui import BroomGUI
 from sweep_functions import PulsedIVTest
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from config import *
 
 class BroomController:
@@ -39,7 +39,7 @@ class BroomController:
             self.gui.disable_controls()
             self.gui.abort_button.config(state=tk.NORMAL)
             
-            self.pulsed_iv.setup_pulsed_sweep(
+            self.pulsed_iv.run_pulsed_sweep(
                 start, stop, num_pulses, sweep_type, voltage_range,
                 pulse_width, pulse_delay, pulse_interval, voltage_compliance,
                 pulse_off_level, num_off_measurements
