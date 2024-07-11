@@ -14,7 +14,7 @@ DEFAULT_NUM_PULSES = 11
 DEFAULT_SWEEP_TYPE = 'Linear'  # 'Linear' or 'Logarithmic'
 
 # Voltage measure range options
-VOLTAGE_RANGES = ['100 mV', '1 V', '10 V', '100 V']
+VOLTAGE_RANGES = ['10 mV', '100 mV', '1 V', '10 V', '100 V']
 DEFAULT_VOLTAGE_RANGE = '100 mV'
 
 # Default pulse settings

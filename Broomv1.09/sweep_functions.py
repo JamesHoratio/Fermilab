@@ -195,16 +195,15 @@ class PulsedIVTest:
         time.sleep(SETUP_DELAY)
 
     def set_2182a_voltage_range(self, voltage_range):
-        voltage_range_values = {'100 mV': 0.1, '1 V': 1, '10 V': 10, '100 V': 100, '10 mA': 'CURR:10mA'}
+        voltage_range_values = {'100 mV': 0.1, '1 V': 1, '10 V': 10, '100 V': 100, '10 mA': 0.01}
         numerical_voltage_range = voltage_range_values[voltage_range]
-        if voltage_range == '10 mA':
-            self.send_command_to_2182A(f':SENS:FUNC "CURR"')
-            self.send_command_to_2182A(f':SENS:CURR:RANG {numerical_voltage_range}')
-        else:
+        try:
             self.send_command_to_2182A(f':SENS:FUNC "VOLT"')
             self.send_command_to_2182A(f':SENS:VOLT:RANG {numerical_voltage_range}')
-        time.sleep(SETUP_DELAY)
-        self.log_message(f"2182A range set to {voltage_range}")
+            time.sleep(SETUP_DELAY)
+            self.log_message(f"2182A range set to {voltage_range}")
+        except Exception as e:
+            self.log_message(f"Failed to set 2182A range: {str(e)}")
 
     def configure_2182a(self):
         commands = [

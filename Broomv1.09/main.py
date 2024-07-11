@@ -1,7 +1,7 @@
 # main2.py
 
 from gui import BroomGUI
-from sweep_functions import PulsedIVTest
+from sweep_functions2 import PulsedIVTest
 import tkinter as tk
 from tkinter import messagebox, ttk
 from config import *
