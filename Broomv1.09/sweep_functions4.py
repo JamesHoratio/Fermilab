@@ -295,30 +295,60 @@ class PulsedIVTest:
     def setupDCSweep(self):
         self.instrument.write('sour:swe:abort') # abort any existing sweeps
         time.sleep(0.1)
+        print('Setting up DC Sweep... 1')
         self.instrument.write('*rst')
         time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND "*rst"') # reset the 2182A
+        print('Setting up DC Sweep... 2')
+        #self.instrument.write('trac:cle') # set the source function to current
+        #time.sleep(2)
+        #self.instrument.write('form:elem read,tst,sour') # set the data format to read both voltage and current
+        #time.sleep(4)
+        self.instrument.write('SYST:COMM:SERIal:SEND "*RST"') # reset the 2182A
         time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND "*CLS"') # reset the 6221
+        self.instrument.write('SYST:COMM:SERIal:SEND "SYST:FFIL ON"') # turn on the fast filter
         time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND ":INIT:CONT OFF;:ABORT"') # reset the 6221
+        print('Trying the format thing 2182A...')
+        self.instrument.write('SYST:COMM:SERIal:SEND "form:elem read,tst"') # 
         time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND ":TRAC:CLE"') # clear the buffer
-        time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND ":SENS:FUNC \'VOLT:DC\'"') #
-        time.sleep(2)
-        self.instrument.write('SYST:COMM:SERIal:SEND ":SENS:VOLT:RANG 0.1"') # set 2182A to 100mV range for best sensitivity on the 5mV expected signal
-        time.sleep(2)
+        print('Tr')
+        print('Setting up DC Sweep... 3')
+        self.instrument.write('OUTP:ISH OLOW')
+        time.sleep(0.1)
+        print('Setting up DC Sweep... 4')
+        self.instrument.write('outp:lte OFF')
+        time.sleep(1)
+        print('Setting up DC Sweep... 5')
+        #self.instrument.write('SYST:COMM:SERIal:SEND "*CLS"') # reset the 6221
+        #time.sleep(2)
+        #self.instrument.write('SYST:COMM:SERIal:SEND ":INIT:CONT OFF;:ABORT"') # reset the 6221
+        #time.sleep(2)
+        #self.instrument.write('SYST:COMM:SERIal:SEND ":TRAC:CLE"') # clear the buffer
+        #time.sleep(2)
+        #self.instrument.write('SYST:COMM:SERIal:SEND ":SENS:FUNC \'VOLT:DC\'"') #
+        #time.sleep(2)
         self.instrument.write('sour:swe:rang best') # set the source range to best
-        time.sleep(0.1)
-        self.instrument.write('sour:swe:space lin')
-        time.sleep(0.1)
-        self.instrument.write('sour:curr:star 0')
-        time.sleep(0.1)
+        time.sleep(2)
+        print('Setting up DC Sweep... 6')
+        self.instrument.write('sour:swe:spac lin')
+        time.sleep(2)
+        print('Setting up DC Sweesp... 7')
+        self.instrument.write('sour:swe:points 11')
+        time.sleep(2)
+        print('Setting up DC Sweep... 8')
+        self.instrument.write('sour:swe:coun 1')
+        time.sleep(2)
+        print('Setting up DC Sweep... 9')
+        self.instrument.write('sour:swe:cab off')
+        time.sleep(2)
+        print('Setting up DC Sweep... 10')
+        self.instrument.write('sour:curr:start 0')
+        time.sleep(2)
+        print('Setting up DC Sweep... 11')
         self.instrument.write('sour:curr:stop 0.01')
         time.sleep(0.1)
-        self.instrument.write('sour:curr:step 0.001')
-        time.sleep(0.1)
+        print('Setting up DC Sweep... 12')
+        #self.instrument.write('sour:curr:step 0.001')
+        #time.sleep(0.1)
         self.instrument.write('sour:curr:comp 100')
         #self.instrument.write('sour:list:curr 0,1e-3,0,2e-3,0,3e-3,0,4e-3,0,5e-3,0,6e-3,0,7e-3,0,8e-3,0,9e-3,0,10e-3') # set the current list
         #time.sleep(0.1)
@@ -327,10 +357,6 @@ class PulsedIVTest:
         #self.instrument.write('sour:list:comp 100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100')
         #time.sleep(0.1)
         self.instrument.write('sour:del 0.001')
-        time.sleep(0.1)
-        self.instrument.write('sour:swe:coun 1')
-        time.sleep(0.1)
-        #self.instrument.write('sour:swe:cab off')
         time.sleep(0.1)
         self.instrument.write('trig:sour tlink')
         time.sleep(0.1)
@@ -342,7 +368,7 @@ class PulsedIVTest:
         time.sleep(0.1)
         self.instrument.write('trig:outp del')
         time.sleep(0.1)
-        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:chan1:rang 10"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang 10"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
         time.sleep(0.4)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
         time.sleep(0.4)
@@ -389,19 +415,19 @@ class PulsedIVTest:
         self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang?"')
         time.sleep(0.2)
         qvolt = self.instrument.query(':SYST:COMM:SERIal:ENT?')
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.instrument.query(':SYST:COMM:SERIal:SEND ":sens:volt:nplc?"')
         time.sleep(0.2)
         qnplc = self.instrument.query(':SYST:COMM:SERIal:ENT?')
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:poin?"')
         time.sleep(0.2)
         qpoint = self.instrument.query(':SYST:COMM:SERIal:ENT?')
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trig:sour?"')
         time.sleep(0.2)
         qtrigsource = self.instrument.query(':SYST:COMM:SERIal:ENT?')
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trig:coun?"')
         time.sleep(0.2)
         qtrigcount = self.instrument.query(':SYST:COMM:SERIal:ENT?')
@@ -441,12 +467,32 @@ class PulsedIVTest:
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
         time.sleep(0.2)
         data = str(self.instrument.query(':SYST:COMM:SERIal:ENT?'))
+        print(f'Data: {data}')
         newdata = []
-        datalist = re.findall(r"[-+]?\d*\.\d+|\d+", data)
-        for number in datalist:
+        #datalist = re.findall(r"[-+]?\d*\.\d+|\d+", data)
+        for number in data.split(','):
             newdata.append(float(number))
         
-        print(newdata)
+        print(f'Newdata: {newdata}')
+#
+        #k6221data = self.fetch_data_6221()
+        #print(f'6221 Data: {k6221data}')
+        #new6221data = []
+        #if len(k6221data) > 0:
+        #    for number in k6221data.split(','):
+        #        new6221data.append(float(number))
+        #        print(f'New 6221 Data: {new6221data}')
+        #else:
+        #    print('No data from 6221')
+
+    def query_command(self, command):
+        return self.instrument.query(command)
+    
+    def fetch_data_6221(self):
+        raw_data = self.query_command('trac:data?').strip()
+        data = raw_data.split(',')
+        return [float(v) for v in data if v]  # Only convert non-empty strings to float
+
         #voltage = newdata[0::3]
         #timestamp = data[1::3]
         #current = data[2::3]
@@ -506,14 +552,18 @@ def main():
 
 # Usage example
 if __name__ == '__main__':
-    main()
-    #test = PulsedIVTest()
-    #test.setupDCSweep()
+    #main()
+    test = PulsedIVTest()
+    test.setupDCSweep()
+    time.sleep(1)
     #test.verifyDCSweepSetup()
-    #test.armDCSweep()
-    #test.runDCSweep()
-    ##test.getDCData()
-    ##test.getDCData()
+    test.armDCSweep()
+    time.sleep(2)
+    test.runDCSweep()
+    time.sleep(2)
+
+    #test.getDCData()
+    test.getDCData()
     #test.meas_data()
-    #test.print_data()
-    ##test.close()
+    #test.printDCData()
+    test.close()

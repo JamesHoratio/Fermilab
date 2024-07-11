@@ -1,8 +1,8 @@
 #import pyvisa as visa
-#K6221Address = ""
+#.instrumentAddress = ""
 #rm = pyvisa.ResourceManager()
 #rm = visa.ResourceManager()
-#k6 = rm.open_resource(K6221Address, write_termination='\n', read_termination='\n')
+#k6 = rm.open_resource.instrumentAddress, write_termination='\n', read_termination='\n')
 #print(rm)
 #devlist = rm.list_resources()
 #print(devlist)  # device list feedback is ('ASRL7::INSTR', 'ASRL8::INSTR', 'ASRL9::INSTR')
@@ -157,20 +157,20 @@
 #class Test2182ARead:
 #    def __init__(self):
 #        self.rm = visa.ResourceManager('@ivi')
-#        self.k6221 = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING_6221)
-#        self.k6221.write_termination = '\n'
-#        self.k6221.read_termination = '\n'
-#        self.k6221.timeout = 60000
+#        self.instrument = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING_6221)
+#        self.instrument.write_termination = '\n'
+#        self.instrument.read_termination = '\n'
+#        self.instrument.timeout = 60000
 #
 #
 #    def send_command(self, command):
-#        self.k6221.write(command)
+#        self.instrument.write(command)
 #
 #    def send_command_to_2182A(self, command):
 #        self.send_command(f'SYST:COMM:SER:SEND "{command}"')
 #
 #    def query_command(self, command):
-#        return self.k6221.query(command)
+#        return self.instrument.query(command)
 #
 #    def query_command_to_2182A(self, command):
 #        self.send_command_to_2182A(command)
@@ -216,19 +216,19 @@ SLEEP_INTERVAL = 0.1
 class Test2182ARead:
     def __init__(self):
         self.rm = visa.ResourceManager('@ivi')
-        self.k6221 = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING_6221)
-        self.k6221.write_termination = '\n'
-        self.k6221.read_termination = '\n'
-        self.k6221.timeout = 60000
+        self.instrument = self.rm.open_resource(INSTRUMENT_RESOURCE_STRING_6221)
+        self.instrument.write_termination = '\n'
+        self.instrument.read_termination = '\n'
+        self.instrument.timeout = 60000
 
     def send_command(self, command):
-        self.k6221.write(command)
+        self.instrument.write(command)
 
     def send_command_to_2182A(self, command):
         self.send_command(f'SYST:COMM:SER:SEND "{command}"')
 
     def query_command(self, command):
-        return self.k6221.query(command)
+        return self.instrument.query(command)
 
     def query_command_to_2182A(self, command):
         self.send_command_to_2182A(command)
@@ -248,15 +248,86 @@ class Test2182ARead:
         data = raw_data.split(',')
         return [float(v) for v in data if v]  # Only convert non-empty strings to float
 
+    def testEnter(self):
+        self.instrument.write('SYST:COMM:SERIal:SEND "*RST"') # reset the 2182A
+        time.sleep(2)
+        self.instrument.write('SYST:COMM:SERIal:SEND "SYST:FFIL ON"') # turn on the fast filter
+        time.sleep(2)
+        time.sleep(0.2)
+        print("Reset")
+        #self.instrument.write('SYST:COMM:SERIal:SEND "trac:data?"')
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang 10"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
+        time.sleep(0.4)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
+        time.sleep(0.4)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:cle"') # clear the buffer
+        time.sleep(0.4)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:feed sens"') # 
+        time.sleep(0.2)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:poin 11"') # 
+        time.sleep(0.2)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trig:sour ext"') # 
+        time.sleep(0.4)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trig:coun 11"') # 
+        time.sleep(0.4)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:feed:control next"') # 
+        time.sleep(0.5)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang?"')
+        time.sleep(1)
+        data = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(0.2)
+        data2 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(2)
+        data3 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(0.1)
+        data4 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        #enter = self.instrument.query('ENTER255')
+        print(f"Data: {data}")
+        print(f"Data2: {data2}")
+        print(f"Data3: {data3}")
+        print(f"Data4: {data4}")
+        #print(f"Enter: {enter}")
+
+    def testenter2(self):
+        self.instrument.write(':SYST:COMM:SERIal:SEND "trac:data?"')
+        time.sleep(1)
+        data = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(0.2)
+        data2 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(2)
+        data3 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        time.sleep(0.1)
+        data4 = self.instrument.query('SYST:COMM:SERIal:ENT?')
+        #enter = self.instrument.query('ENTER255')
+        print(f"Data: {data}")
+        print(f"Data2: {data2}")
+        print(f"Data3: {data3}")
+        print(f"Data4: {data4}")
+#
+        #elementFormat = self.instrument.query('form:elem?')
+        #time.sleep(0.2)
+        #print(f"Element Format: {elementFormat}")
+        time.sleep(2)
+        k6221data = self.instrument.query('trac:data?')
+        #k6221data = k6221data.split(',')
+        #for i, value in enumerate(k6221data):
+        #    print(f"Data 6221 #{i+1}: {value}")
+        print(f"Data 6221 #1: {k6221data}")
+
+    
 if __name__ == "__main__":
     test = Test2182ARead()
-    voltages = test.fetch_existing_data()
-    for i, voltage in enumerate(voltages):
-        print(f"Stored Measurement {i+1}: {voltage} V")
-    
-    try:
-        data_6221 = test.fetch_data_6221()
-        for p, value in enumerate(data_6221):
-            print(f"6221 Stored Measurement {p+1}: {value}")
-    except ValueError as e:
-        print(f"Error reading 6221 data: {e}")
+    #voltages = test.fetch_existing_data()
+    #for i, voltage in enumerate(voltages):
+    #    print(f"Stored Measurement {i+1}: {voltage} V")
+    #
+    #try:
+    #    data_6221 = test.fetch_data_6221()
+    #    for p, value in enumerate(data_6221):
+    #        print(f"6221 Stored Measurement {p+1}: {value}")
+    #except ValueError as e:
+    #    print(f"Error reading 6221 data: {e}")
+    test.testenter2()
+    k6221data = test.fetch_data_6221()
+    print(f"6221 Data: {k6221data}")
+
