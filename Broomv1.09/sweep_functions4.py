@@ -310,7 +310,6 @@ class PulsedIVTest:
         print('Trying the format thing 2182A...')
         self.instrument.write('SYST:COMM:SERIal:SEND "form:elem read,tst"') # 
         time.sleep(2)
-        print('Tr')
         print('Setting up DC Sweep... 3')
         self.instrument.write('OUTP:ISH OLOW')
         time.sleep(0.1)
