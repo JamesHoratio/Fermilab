@@ -18,9 +18,7 @@ date = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 class BaseSweep:
     def __init__(self):
         self.rm = pyvisa.ResourceManager()
-        self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
-        self.instrument.write_termination = '\n'
-        self.instrument.read_termination = '\n'
+        self.instrument = None
         self.filename = f'Sweep_{date}.csv'
 
     def connect(self):
@@ -34,6 +32,9 @@ class BaseSweep:
             return True
         except pyvisa.errors.VisaIOError as e:
             self.log_message(f"{CONNECTION_ERROR} {str(e)}")
+            return False
+        except Exception as e:
+            self.log_message(f"Unexpected error during connection: {str(e)}")
             return False
         
     def disconnect(self):
@@ -325,7 +326,7 @@ class DCSweep:
         self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
         self.instrument.write_termination = '\n'
         self.instrument.read_termination = '\n'
-        self.filename = f'Sweep_{date}.csv'
+        self.filename = f'DCSweep_{date}.csv'
 
     def armDCSweep(self):
         self.instrument.write(':sour:swe:arm')
@@ -507,39 +508,45 @@ class DCSweep:
         print(f'Data 2182A: {qdata}')
 
     def getDCData(self):
-        self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
-        time.sleep(0.2)
-        data = str(self.instrument.query(':SYST:COMM:SERIal:ENT?'))
-        print(f'Data: {data}')
-        newdata = []
-        #datalist = re.findall(r"[-+]?\d*\.\d+|\d+", data)
-        for number in data.split(','):
-            newdata.append(float(number))
-        
-        print(f'Newdata: {newdata}')
-#
-        #k6221data = self.fetch_data_6221()
-        #print(f'6221 Data: {k6221data}')
-        #new6221data = []
-        #if len(k6221data) > 0:
-        #    for number in k6221data.split(','):
-        #        new6221data.append(float(number))
-        #        print(f'New 6221 Data: {new6221data}')
-        #else:
-        #    print('No data from 6221')
+            current = [0,0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0.01]
+            self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
+            time.sleep(0.2)
+            data = str(self.instrument.query(':SYST:COMM:SERIal:ENT?'))
+            #print(f'Data: {data}')
+            newdata = []
+            #datalist = re.findall(r"[-+]?\d*\.\d+|\d+", data)
+            for number in data.split(','):
+                newdata.append(float(number))
+
+            #print(f'Newdata: {newdata}')
+            voltage = newdata[0::2]
+            timestamp = newdata[1::2]
+
+            for v, t, c in zip(voltage, timestamp, current):
+                print(f'Voltage: {v}, Timestamp: {t}, Current: {c}')
+
+            return np.array(voltage), np.array(timestamp), np.array(current)
+            #k6221data = self.fetch_data_6221()
+            #print(f'6221 Data: {k6221data}')
+            #new6221data = []
+            #if len(k6221data) > 0:
+            #    for number in k6221data.split(','):
+            #        new6221data.append(float(number))
+            #        print(f'New 6221 Data: {new6221data}')
+            #else:
+            #    print('No data from 6221')
 
     def meas_data(self):
         current = [0,0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0.01]
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
         time.sleep(0.2)
-        data = self.instrument.write(':SYST:COMM:SERIal:ENT?')
+        data = self.instrument.query_ascii_values(':SYST:COMM:SERIal:ENT?')
         #data = self.instrument.query_ascii_values(':TRAC:DATA?')
-        voltage = data[0::2]
+        voltage = data[::2]
         timestamp = data[1::2]
         return np.array(voltage), np.array(timestamp),np.array(current)
 
     def printDCData(self):
-        
         voltage, timestamp, current = self.meas_data()
         time.sleep(1)
         for v, t, i in zip(voltage, timestamp, current):
@@ -568,27 +575,42 @@ class DCSweep:
         time.sleep(1)
         self.armDCSweep()
         time.sleep(2)
-        self.printDCData()
+        #self.printDCData()
         #self.getDCData()
+        self.graphDCData()
         base.close()
 
 
 
 def main():
     sweep_type = input("Enter 'pulsed' for Pulsed IV Sweep or 'dc' for a linear staircase DC Sweep, or q to abort and quit: ").lower()
-    psweep = PulsedIVTest()
-    dsweep = DCSweep()
     bsweep = BaseSweep()
+    
+    if not bsweep.connect():
+        print("Failed to connect to the instrument. Please check the connection and try again.")
+        sys.exit(1)
+    
     if sweep_type == 'pulsed':
+        print('Running Pulsed IV Sweep...')
+        psweep = PulsedIVTest()
         psweep.runIVPulsed()
+        print('Pulsed IV Sweep Complete...')
     elif sweep_type == 'dc':
+        print('Running DC Sweep...')
+        dsweep = DCSweep()
         dsweep.runDC()
+        print('DC Sweep Complete...')
     elif sweep_type == 'q':
+        print('Aborting and quitting...')
         bsweep.abort_sweep()
+        bsweep.close()
+        print('Sweep Aborted and Program Closed...')
+        sys.exit(0)
     else:
         print("Invalid sweep type. Please enter 'pulsed', 'dc', or 'q'.")
-        bsweep.close()
-        sys.exit(0)
+    
+    bsweep.close()
+    sys.exit(0)
 
 # Usage example
 if __name__ == '__main__':

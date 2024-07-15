@@ -21,7 +21,7 @@ class PulsedIVTest:
         self.instrument.timeout = TIMEOUT
         self.instrument.write_termination = '\n'
         self.instrument.read_termination = '\n'
-        self.filename = f'IVSweep{date}.csv'
+        self.filename = f'Sweep_{date}.csv'
 
     def connect(self):
         try:
@@ -289,7 +289,7 @@ class PulsedIVTest:
         plt.title('Pulsed IV Sweep')
         plt.xlabel('Current (A)')
         plt.ylabel('Voltage (V)')
-        plt.plot(current, voltage, c=color, label=(f'Pulsed IV Sweep {date}'))
+        plt.plot(current, voltage, c=color, label=(f'IV_Sweep_{date}'))
         plt.show()
     
     def setupDCSweep(self):
@@ -463,17 +463,24 @@ class PulsedIVTest:
         print(f'Data 2182A: {qdata}')
 
     def getDCData(self):
+        current = [0,0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0.01]
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
         time.sleep(0.2)
         data = str(self.instrument.query(':SYST:COMM:SERIal:ENT?'))
-        print(f'Data: {data}')
+        #print(f'Data: {data}')
         newdata = []
         #datalist = re.findall(r"[-+]?\d*\.\d+|\d+", data)
         for number in data.split(','):
             newdata.append(float(number))
         
-        print(f'Newdata: {newdata}')
-#
+        #print(f'Newdata: {newdata}')
+        voltage = newdata[0::2]
+        timestamp = newdata[1::2]
+
+        for v, t, c in zip(voltage, timestamp, current):
+            print(f'Voltage: {v}, Timestamp: {t}, Current: {c}')
+
+        return np.array(voltage), np.array(timestamp), np.array(current)
         #k6221data = self.fetch_data_6221()
         #print(f'6221 Data: {k6221data}')
         #new6221data = []
@@ -518,7 +525,7 @@ class PulsedIVTest:
         plt.title('DC Sweep')
         plt.xlabel('Current (A)')
         plt.ylabel('Voltage (V)')
-        plt.plot(current, voltage, c=color, label=(f'DC Sweep {date}'))
+        plt.plot(current, voltage, c=color, label=(f'DC_Sweep_{date}'))
         plt.show()
 
     def armDCSweep(self):
@@ -562,7 +569,9 @@ if __name__ == '__main__':
     time.sleep(2)
 
     #test.getDCData()
-    test.getDCData()
+    #test.getDCData()
     #test.meas_data()
     #test.printDCData()
+    #time.sleep(2)
+    test.graphDCData()
     test.close()

@@ -230,11 +230,11 @@ def main():
     test.setup_sweep()
     #test.setup_immediate_trigger()
     #test.setup_trigger_link()
-    test.arm_sweep()
-    test.run_measurement()
+    #test.arm_sweep()
+    #test.run_measurement()
     test.abort_sweep()
-    test.print_data()
-    test.graph_data()
+    #test.print_data()
+    #test.graph_data()
     test.close()
 
 # Usage example
