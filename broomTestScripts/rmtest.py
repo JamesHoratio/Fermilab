@@ -258,7 +258,7 @@ class Test2182ARead:
         #self.instrument.write('SYST:COMM:SERIal:SEND "trac:data?"')
         self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang 10"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
         time.sleep(0.4)
-        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:nplc 0.1"') # set 2182A to 0.01 NPLC for faster measurements
         time.sleep(0.4)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:cle"') # clear the buffer
         time.sleep(0.4)
@@ -289,6 +289,8 @@ class Test2182ARead:
         #print(f"Enter: {enter}")
 
     def testenter2(self):
+        #self.instrument.write('SYST:COMM:SERIal:SEND "syst:key 17"') # reset the 2182A
+        #time.sleep(2)
         self.instrument.write(':SYST:COMM:SERIal:SEND "trac:data?"')
         time.sleep(1)
         data = self.instrument.query('SYST:COMM:SERIal:ENT?')
