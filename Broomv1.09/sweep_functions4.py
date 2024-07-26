@@ -608,9 +608,9 @@ class PulsedIVTest:
         time.sleep(2)
         self.runDCSweep()
         time.sleep(2)
-        self.getDCData()
+        #self.getDCData()
         #self.printDCData()
-        #self.graphDCData()
+        self.graphDCData()
         self.undo_tryfast()
         self.close()
 
