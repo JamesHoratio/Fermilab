@@ -162,6 +162,135 @@ class PulsedIVTest:
         self.instrument.read_termination = '\n'
         self.filename = f'IVSweep{date}.csv'
 
+    def connect(self):
+        try:
+            self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
+            self.instrument.timeout = TIMEOUT
+            self.instrument.write_termination = '\n'
+            self.instrument.read_termination = '\n'
+            self.verify_instrument_identity()
+            self.log_message(CONNECTION_SUCCESS)
+            return True
+        except pyvisa.errors.VisaIOError as e:
+            self.log_message(f"{CONNECTION_ERROR} {str(e)}")
+            return False
+        except Exception as e:
+            self.log_message(f"Unexpected error during connection: {str(e)}")
+            return False
+        
+    def disconnect(self):
+        if self.instrument:
+            self.instrument.close()
+            self.instrument = None
+        self.rm.close()
+        self.log_message(DISCONNECTION_MESSAGE)
+
+    def robust_query(self, query, retries=3, timeout=5):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query(query).strip()
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError:
+                self.log_message(f"Timeout occurred. Retrying... (Attempt {attempt + 1})")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query: {query}")
+    
+    def robust_query_ascii_values(self, query, retries=3, timeout=10):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query_ascii_values(query)
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError:
+                self.log_message(f"Timeout occurred. Retrying... (Attempt {attempt + 1})")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query: {query}")
+    
+    def wait_for_operation_complete(self):
+        self.instrument.query('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def wait_for_operation_complete_2182A(self):
+        self.query_2182A('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def clear_buffers(self):
+        self.instrument.write('*CLS')  # Clear status registers and error queue
+        self.instrument.read()  # Read and discard any lingering output
+        time.sleep(SETUP_DELAY)
+
+    def send_command_to_2182A(self, command):
+        self.instrument.write(f':SYST:COMM:SER:SEND "{command}"')
+        time.sleep(SETUP_DELAY)
+
+    def query_2182A(self, query):
+        self.send_command_to_2182A(query)
+        time.sleep(QUERY_DELAY)
+        return self.robust_query(':SYST:COMM:SER:ENT?')
+    
+    def clear_buffers_2182A(self):
+        self.send_command_to_2182A('*CLS')
+        self.query_2182A('*OPC?')
+        time.sleep(SETUP_DELAY)
+
+    def reset_6221(self):
+        self.instrument.write('*RST')
+        time.sleep(LONG_COMMAND_DELAY)
+        self.wait_for_operation_complete()
+        self.clear_buffers()
+        self.log_message("6221 has been reset.")
+
+    def log_message(self, message):
+        print(message)  # Default behavior is to print to console
+
+    def verify_instrument_identity(self):
+        idn = self.robust_query('*IDN?')
+        if '6221' not in idn:
+            raise Exception("Connected to wrong instrument or communication error")
+
+    def clean_buffer(self):
+        self.instrument.write('TRAC:CLE')
+        time.sleep(SETUP_DELAY)
+    
+    def set_buffer_size(self, size=DEFAULT_BUFFER_SIZE):
+        self.instrument.write(f'TRAC:POIN {size}')
+        time.sleep(SETUP_DELAY)
+
+    def close(self):
+        self.instrument.close()
+        self.rm.close()
+
+    def abort_sweep(self):
+        self.instrument.write(':SOUR:SWE:ABOR')
+        time.sleep(4)
+
+    def read_errors(self):
+        errors = []
+        while True:
+            error = self.robust_query(':SYST:ERR?')
+            if error.startswith('0,'):  # No error
+                break
+            errors.append(error)
+        return errors
+    
+    def query_command(self, command):
+        return self.instrument.query(command)
+    
+    def fetch_data_6221(self):
+        raw_data = self.query_command('trac:data?').strip()
+        data = raw_data.split(',')
+        return [float(v) for v in data if v]  # Only convert non-empty strings to float
+
+        #voltage = newdata[0::3]
+        #timestamp = data[1::3]
+        #current = data[2::3]
+        #return np.array(voltage), np.array(timestamp), np.array(current)
+
     def setup_sweep(self):
         self.instrument.write('*RST')
         time.sleep(0.5)  # Wait for reset to complete
@@ -326,7 +455,137 @@ class DCSweep:
         self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
         self.instrument.write_termination = '\n'
         self.instrument.read_termination = '\n'
+        self.instrument.timeout = TIMEOUT
         self.filename = f'DCSweep_{date}.csv'
+
+    def connect(self):
+        try:
+            self.instrument = self.rm.open_resource(INSTRUMENT_ADDRESS)
+            self.instrument.timeout = TIMEOUT
+            self.instrument.write_termination = '\n'
+            self.instrument.read_termination = '\n'
+            self.verify_instrument_identity()
+            self.log_message(CONNECTION_SUCCESS)
+            return True
+        except pyvisa.errors.VisaIOError as e:
+            self.log_message(f"{CONNECTION_ERROR} {str(e)}")
+            return False
+        except Exception as e:
+            self.log_message(f"Unexpected error during connection: {str(e)}")
+            return False
+        
+    def disconnect(self):
+        if self.instrument:
+            self.instrument.close()
+            self.instrument = None
+        self.rm.close()
+        self.log_message(DISCONNECTION_MESSAGE)
+
+    def robust_query(self, query, retries=3, timeout=5):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query(query).strip()
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError:
+                self.log_message(f"Timeout occurred. Retrying... (Attempt {attempt + 1})")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query: {query}")
+    
+    def robust_query_ascii_values(self, query, retries=3, timeout=10):
+        for attempt in range(retries):
+            try:
+                self.instrument.timeout = timeout * 1000  # timeout in milliseconds
+                response = self.instrument.query_ascii_values(query)
+                time.sleep(QUERY_DELAY)
+                if response:
+                    return response
+            except pyvisa.errors.VisaIOError:
+                self.log_message(f"Timeout occurred. Retrying... (Attempt {attempt + 1})")
+            time.sleep(0.5)
+        raise Exception(f"Failed to get response for query: {query}")
+    
+    def wait_for_operation_complete(self):
+        self.instrument.query('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def wait_for_operation_complete_2182A(self):
+        self.query_2182A('*OPC?')
+        time.sleep(QUERY_DELAY)
+
+    def clear_buffers(self):
+        self.instrument.write('*CLS')  # Clear status registers and error queue
+        self.instrument.read()  # Read and discard any lingering output
+        time.sleep(SETUP_DELAY)
+
+    def send_command_to_2182A(self, command):
+        self.instrument.write(f':SYST:COMM:SER:SEND "{command}"')
+        time.sleep(SETUP_DELAY)
+
+    def query_2182A(self, query):
+        self.send_command_to_2182A(query)
+        time.sleep(QUERY_DELAY)
+        return self.robust_query(':SYST:COMM:SER:ENT?')
+    
+    def clear_buffers_2182A(self):
+        self.send_command_to_2182A('*CLS')
+        self.query_2182A('*OPC?')
+        time.sleep(SETUP_DELAY)
+
+    def reset_6221(self):
+        self.instrument.write('*RST')
+        time.sleep(LONG_COMMAND_DELAY)
+        self.wait_for_operation_complete()
+        self.clear_buffers()
+        self.log_message("6221 has been reset.")
+
+    def log_message(self, message):
+        print(message)  # Default behavior is to print to console
+
+    def verify_instrument_identity(self):
+        idn = self.robust_query('*IDN?')
+        if '6221' not in idn:
+            raise Exception("Connected to wrong instrument or communication error")
+
+    def clean_buffer(self):
+        self.instrument.write('TRAC:CLE')
+        time.sleep(SETUP_DELAY)
+    
+    def set_buffer_size(self, size=DEFAULT_BUFFER_SIZE):
+        self.instrument.write(f'TRAC:POIN {size}')
+        time.sleep(SETUP_DELAY)
+
+    def close(self):
+        self.instrument.close()
+        self.rm.close()
+
+    def abort_sweep(self):
+        self.instrument.write(':SOUR:SWE:ABOR')
+        time.sleep(4)
+
+    def read_errors(self):
+        errors = []
+        while True:
+            error = self.robust_query(':SYST:ERR?')
+            if error.startswith('0,'):  # No error
+                break
+            errors.append(error)
+        return errors
+    
+    def query_command(self, command):
+        return self.instrument.query(command)
+    
+    def fetch_data_6221(self):
+        raw_data = self.query_command('trac:data?').strip()
+        data = raw_data.split(',')
+        return [float(v) for v in data if v]  # Only convert non-empty strings to float
+
+        #voltage = newdata[0::3]
+        #timestamp = data[1::3]
+        #current = data[2::3]
+        #return np.array(voltage), np.array(timestamp), np.array(current)
 
     def armDCSweep(self):
         self.instrument.write(':sour:swe:arm')
@@ -570,7 +829,6 @@ class DCSweep:
         plt.show()
 
     def runDC(self):
-        base = BaseSweep()
         self.setupDCSweep()
         time.sleep(1)
         self.armDCSweep()
@@ -578,7 +836,7 @@ class DCSweep:
         #self.printDCData()
         #self.getDCData()
         self.graphDCData()
-        base.close()
+        self.close()
 
 
 

@@ -303,8 +303,21 @@ class PulsedIVTest:
         #time.sleep(2)
         #self.instrument.write('form:elem read,tst,sour') # set the data format to read both voltage and current
         #time.sleep(4)
-        self.instrument.write('SYST:COMM:SERIal:SEND "*RST"') # reset the 2182A
+        self.instrument.write('SYST:COMM:SERIal:SEND "TRACE:CLE"') # clear the buffer
+        print('Clearing trace buffer on 2182A...')
         time.sleep(2)
+        self.instrument.write('SYST:COMM:SERIal:SEND "*RST"') # reset the 2182A
+        print('Resetting 2182A...')
+        time.sleep(2)
+        #self.instrument.write('SYST:COMM:SERIal:SEND "*CLS"') # clear the buffer
+        #print('Clearing 2182A buffer...')
+        #time.sleep(2)
+        self.instrument.write('SYST:COMM:SERIal:SEND ":INIT:CONT OFF"') # Init off
+        print('Turning off 2182A init...')
+        time.sleep(2)
+        #self.instrument.write('SYST:COMM:SERIal:SEND ":ABORT"') # abort the 2182A
+        #print('Aborting 2182A...')
+        #time.sleep(2)
         self.instrument.write('SYST:COMM:SERIal:SEND "SYST:FFIL ON"') # turn on the fast filter
         time.sleep(2)
         print('Trying the format thing 2182A...')
@@ -326,22 +339,22 @@ class PulsedIVTest:
         #self.instrument.write('SYST:COMM:SERIal:SEND ":SENS:FUNC \'VOLT:DC\'"') #
         #time.sleep(2)
         self.instrument.write('sour:swe:rang best') # set the source range to best
-        time.sleep(2)
+        time.sleep(0.4)
         print('Setting up DC Sweep... 6')
         self.instrument.write('sour:swe:spac lin')
-        time.sleep(2)
-        print('Setting up DC Sweesp... 7')
+        time.sleep(0.2)
+        print('Setting up DC Sweep... 7')
         self.instrument.write('sour:swe:points 11')
-        time.sleep(2)
+        time.sleep(0.4)
         print('Setting up DC Sweep... 8')
         self.instrument.write('sour:swe:coun 1')
-        time.sleep(2)
+        time.sleep(0.4)
         print('Setting up DC Sweep... 9')
         self.instrument.write('sour:swe:cab off')
-        time.sleep(2)
+        time.sleep(0.4)
         print('Setting up DC Sweep... 10')
         self.instrument.write('sour:curr:start 0')
-        time.sleep(2)
+        time.sleep(0.4)
         print('Setting up DC Sweep... 11')
         self.instrument.write('sour:curr:stop 0.01')
         time.sleep(0.1)
@@ -367,9 +380,9 @@ class PulsedIVTest:
         time.sleep(0.1)
         self.instrument.write('trig:outp del')
         time.sleep(0.1)
-        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:rang 10"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:chan1:rang 0.1"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
         time.sleep(0.4)
-        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:dc:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
         time.sleep(0.4)
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:cle"') # clear the buffer
         time.sleep(0.4)
@@ -384,16 +397,57 @@ class PulsedIVTest:
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:feed:control next"') # 
         time.sleep(0.5)
         
+    def tryfast(self):
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SENS:FUNC \'VOLT:DC\'"') #
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SENS:CHAN 1"') #
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SYST:AZER:STAT OFF"') # auto zero off
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SENS:VOLT:CHAN1:LPAS:STAT OFF"') # Analog filter off
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SENS:VOLT:CHAN1:DFIL:STAT OFF"') # Digital filter off
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":TRIG:DEL 0"')
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND "SENS:VOLT:DC:DIG 4"')
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":DISP:ENAB OFF"')
+        time.sleep(0.1)
 
+    def undo_tryfast(self):
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":DISP:ENAB ON"')
+        time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":SYST:AZER:STAT ON"') # auto zero on
+        time.sleep(0.1)
 
     def runDCSweep(self):
+        #self.instrument.write(':DISP:ENAB OFF')
+        self.instrument.write(':SYST:COMM:SERIal:SEND "init"')
         self.instrument.write(':init:imm')
-        self.instrument.write(':SYST:COMM:SERIal:SEND "init"') #
-        print('Starting DC Sweep... \n')
+        print('Waiting for DC Sweep to complete... \n')
         time.sleep(5)
+        #print('waiting for DC Sweep to complete... \n')
+        #time.sleep(5)
+        #print('waiting for DC Sweep to complete... 2\n')
+        #time.sleep(5)
+        #print('waiting for DC Sweep to complete... 3\n')
+        #time.sleep(5)
+        #print('waiting for DC Sweep to complete... 4\n')
+        #time.sleep(5)
+        #print('waiting for DC Sweep to complete... 5\n')
+        #time.sleep(5)
         self.instrument.write('sour:swe:abor')
         print('DC Sweep Complete... Aborting\n')
         time.sleep(0.1)
+        #self.instrument.write(':SYST:COMM:SERIal:SEND ":ABORT"')
+        #time.sleep(0.1)
+        #self.instrument.write(':DISP:ENAB ON')
+        #time.sleep(0.1)
+        #self.instrument.write(':SYST:COMM:SERIal:SEND ":DISP:ENAB ON"')
+        #time.sleep(0.1)
+        #self.instrument.write(':SYST:COMM:SERIal:SEND ":SYST:AZER:STAT ON"') # auto zero on
+        #time.sleep(0.1)
 
     
     def verifyDCSweepSetup(self):
@@ -540,38 +594,81 @@ class PulsedIVTest:
         time.sleep(1)
         print('Starting DC Sweep...')
 
+    def abortDCSweep(self):
+        self.instrument.write(':sour:swe:abor')
+        print('DC Sweep Aborted...')
+        time.sleep(0.1)
+    
+    def runDCSweepProgram(self):
+        self.setupDCSweep()
+        time.sleep(1)
+        self.tryfast()
+        #self.verifyDCSweepSetup()
+        self.armDCSweep()
+        time.sleep(2)
+        self.runDCSweep()
+        time.sleep(2)
+        self.getDCData()
+        #self.printDCData()
+        #self.graphDCData()
+        self.undo_tryfast()
+        self.close()
+
+    def runPulsedIVProgram(self):
+        self.setup_sweep()
+        time.sleep(1)
+        self.verify_sweep_setup()
+        self.arm_sweep()
+        time.sleep(2)
+        self.run_measurement()
+        time.sleep(2)
+        self.abort_sweep()
+        time.sleep(0.1)
+        self.print_data()
+        self.graph_data()
+        self.close()
     
 
 def main():
     test = PulsedIVTest()
+    sweep_type = input("Enter 'pulsed' for Pulsed IV Sweep or 'dc' for a linear staircase DC Sweep, or q to abort and quit: \n").lower()
+    if sweep_type == 'pulsed':
+        test.runPulsedIVProgram()
+    elif sweep_type == 'dc':
+        test.runDCSweepProgram()
+    elif sweep_type == 'q':
+        test.close()
+    else:
+        print('Invalid input. Please try again.')
+        main()
+    
     #test.setup_trigger_link()
-    test.setup_sweep()
-    test.verify_sweep_setup()
-
-    test.arm_sweep()
-    test.run_measurement()
-    #time.sleep(15)
-    test.abort_sweep()
-    test.print_data()
-    test.graph_data()
-    test.close()
+    #test.setup_sweep()
+    #test.verify_sweep_setup()
+#
+    #test.arm_sweep()
+    #test.run_measurement()
+    ##time.sleep(15)
+    #test.abort_sweep()
+    #test.print_data()
+    #test.graph_data()
+    #test.close()
 
 # Usage example
 if __name__ == '__main__':
-    #main()
-    test = PulsedIVTest()
-    test.setupDCSweep()
-    time.sleep(1)
-    #test.verifyDCSweepSetup()
-    test.armDCSweep()
-    time.sleep(2)
-    test.runDCSweep()
-    time.sleep(2)
-
-    #test.getDCData()
-    #test.getDCData()
-    #test.meas_data()
-    #test.printDCData()
+    main()
+    #test = PulsedIVTest()
+    #test.setupDCSweep()
+    #time.sleep(1)
+    ##test.verifyDCSweepSetup()
+    #test.armDCSweep()
     #time.sleep(2)
-    test.graphDCData()
-    test.close()
+    #test.runDCSweep()
+    #time.sleep(2)
+    ##test.getDCData()
+    ##test.getDCData()
+    ##test.meas_data()
+    ##test.printDCData()
+    ##time.sleep(2)
+    #test.graphDCData()
+    #test.close()
