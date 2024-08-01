@@ -299,25 +299,15 @@ class PulsedIVTest:
         self.instrument.write('*rst')
         time.sleep(2)
         print('Setting up DC Sweep... 2')
-        #self.instrument.write('trac:cle') # set the source function to current
-        #time.sleep(2)
-        #self.instrument.write('form:elem read,tst,sour') # set the data format to read both voltage and current
-        #time.sleep(4)
         self.instrument.write('SYST:COMM:SERIal:SEND "TRACE:CLE"') # clear the buffer
         print('Clearing trace buffer on 2182A...')
         time.sleep(2)
         self.instrument.write('SYST:COMM:SERIal:SEND "*RST"') # reset the 2182A
         print('Resetting 2182A...')
         time.sleep(2)
-        #self.instrument.write('SYST:COMM:SERIal:SEND "*CLS"') # clear the buffer
-        #print('Clearing 2182A buffer...')
-        #time.sleep(2)
         self.instrument.write('SYST:COMM:SERIal:SEND ":INIT:CONT OFF"') # Init off
         print('Turning off 2182A init...')
         time.sleep(2)
-        #self.instrument.write('SYST:COMM:SERIal:SEND ":ABORT"') # abort the 2182A
-        #print('Aborting 2182A...')
-        #time.sleep(2)
         self.instrument.write('SYST:COMM:SERIal:SEND "SYST:FFIL ON"') # turn on the fast filter
         time.sleep(2)
         print('Trying the format thing 2182A...')
@@ -330,14 +320,6 @@ class PulsedIVTest:
         self.instrument.write('outp:lte OFF')
         time.sleep(1)
         print('Setting up DC Sweep... 5')
-        #self.instrument.write('SYST:COMM:SERIal:SEND "*CLS"') # reset the 6221
-        #time.sleep(2)
-        #self.instrument.write('SYST:COMM:SERIal:SEND ":INIT:CONT OFF;:ABORT"') # reset the 6221
-        #time.sleep(2)
-        #self.instrument.write('SYST:COMM:SERIal:SEND ":TRAC:CLE"') # clear the buffer
-        #time.sleep(2)
-        #self.instrument.write('SYST:COMM:SERIal:SEND ":SENS:FUNC \'VOLT:DC\'"') #
-        #time.sleep(2)
         self.instrument.write('sour:swe:rang best') # set the source range to best
         time.sleep(0.4)
         print('Setting up DC Sweep... 6')
@@ -362,12 +344,7 @@ class PulsedIVTest:
         #self.instrument.write('sour:curr:step 0.001')
         #time.sleep(0.1)
         self.instrument.write('sour:curr:comp 100')
-        #self.instrument.write('sour:list:curr 0,1e-3,0,2e-3,0,3e-3,0,4e-3,0,5e-3,0,6e-3,0,7e-3,0,8e-3,0,9e-3,0,10e-3') # set the current list
-        #time.sleep(0.1)
-        #self.instrument.write('sour:list:del 0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001,0.001')
-        #time.sleep(0.1)
-        #self.instrument.write('sour:list:comp 100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100')
-        #time.sleep(0.1)
+        time.sleep(0.1)
         self.instrument.write('sour:del 0.001')
         time.sleep(0.1)
         self.instrument.write('trig:sour tlink')
@@ -427,28 +404,9 @@ class PulsedIVTest:
         self.instrument.write(':init:imm')
         print('Waiting for DC Sweep to complete... \n')
         time.sleep(5)
-        #print('waiting for DC Sweep to complete... \n')
-        #time.sleep(5)
-        #print('waiting for DC Sweep to complete... 2\n')
-        #time.sleep(5)
-        #print('waiting for DC Sweep to complete... 3\n')
-        #time.sleep(5)
-        #print('waiting for DC Sweep to complete... 4\n')
-        #time.sleep(5)
-        #print('waiting for DC Sweep to complete... 5\n')
-        #time.sleep(5)
         self.instrument.write('sour:swe:abor')
         print('DC Sweep Complete... Aborting\n')
         time.sleep(0.1)
-        #self.instrument.write(':SYST:COMM:SERIal:SEND ":ABORT"')
-        #time.sleep(0.1)
-        #self.instrument.write(':DISP:ENAB ON')
-        #time.sleep(0.1)
-        #self.instrument.write(':SYST:COMM:SERIal:SEND ":DISP:ENAB ON"')
-        #time.sleep(0.1)
-        #self.instrument.write(':SYST:COMM:SERIal:SEND ":SYST:AZER:STAT ON"') # auto zero on
-        #time.sleep(0.1)
-
     
     def verifyDCSweepSetup(self):
         qhigh = self.instrument.query('sour:curr:star?')
