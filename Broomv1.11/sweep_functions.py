@@ -116,14 +116,16 @@ class PulsedIVTest:
         time.sleep(0.5)  # Wait for reset to complete
         self.instrument.write('pdel:high 0.01') # set the high level to 10mA
         time.sleep(0.1)
-        self.instrument.write('pdel:coun INF') # set the pulse count to infinite
+        self.instrument.write('pdel:coun 3') # set the pulse count to infinite
         time.sleep(0.1)
         self.instrument.write('pdel:widt 0.0001') # set the pulse width to 100us
         time.sleep(0.1)
         self.instrument.write('pdel:sdel 6e-5') # set the pulse delay to 60us
         time.sleep(0.1)
-        self.instrument.write('pdel:int 5') # set the pulse interval to 5ms
+        self.instrument.write('pdel:int 5') # 
         time.sleep(0.1)
+        self.instrument.write(':SYST:COMM:SERIal:SEND ":sens:volt:dc:nplc 0.01"') # set 2182A to 0.01 NPLC for faster measurements
+        time.sleep(0.4)
         self.instrument.write(':syst:comm:ser:send ":sens:volt:rang 0.01"') # set 2182A to 10mV range for best sensitivity on the 5mV expected signal
         time.sleep(0.1)
         self.instrument.write('pdel:swe on') # turn on the pulse delta sweep mode
@@ -134,7 +136,7 @@ class PulsedIVTest:
         time.sleep(0.1)
         self.instrument.write('curr:stop 0.01') # set the stop current to 10mA
         time.sleep(0.1)
-        self.instrument.write('curr:step 0.001') # set the current step to 1mA
+        self.instrument.write('sour:swe:poin 4') # set the current step to 1mA
         time.sleep(0.1)
         self.instrument.write('sour:del 0.001') # set the delay between pulses to 1ms
         time.sleep(0.1)
@@ -576,6 +578,7 @@ class PulsedIVTest:
         self.setup_sweep()
         time.sleep(1)
         self.verify_sweep_setup()
+        #self.tryfast()
         self.arm_sweep()
         time.sleep(2)
         self.run_measurement()
