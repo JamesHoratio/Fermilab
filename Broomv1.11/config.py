@@ -10,12 +10,12 @@ LONG_COMMAND_DELAY = 3  # 3 seconds delay for long commands like RST
 # Default sweep parameters
 DEFAULT_START_LEVEL = 0  # Amps
 DEFAULT_STOP_LEVEL = 10e-3  # 10 mA
-DEFAULT_NUM_PULSES = 11
+DEFAULT_NUM_PULSES = 4
 DEFAULT_SWEEP_TYPE = 'Linear'  # 'Linear' or 'Logarithmic'
 
 # Voltage measure range options
 VOLTAGE_RANGES = ['10 mV', '100 mV', '1 V', '10 V', '100 V']
-DEFAULT_VOLTAGE_RANGE = '100 mV'
+DEFAULT_VOLTAGE_RANGE = '10 mV'
 
 # Default pulse settings
 DEFAULT_PULSE_WIDTH = 0.0002  # 200 µs
@@ -37,7 +37,7 @@ Y_AXIS_LABEL = "Voltage (V)"
 
 # GUI settings
 GUI_WINDOW_SIZE = "1000x850"
-GUI_TITLE = "Broom - Pulsed IV Measurements"
+GUI_TITLE = "Broom - Sweep Measurements"
 
 # File settings
 DEFAULT_FILE_PREFIX = "PulsedIV_"
