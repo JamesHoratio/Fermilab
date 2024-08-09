@@ -136,7 +136,7 @@ class PulsedIVTest:
         time.sleep(0.1)
         self.instrument.write('curr:stop 0.01') # set the stop current to 10mA
         time.sleep(0.1)
-        self.instrument.write('sour:swe:poin 4') # set the current step to 1mA
+        self.instrument.write('sour:swe:poin 4') # set the number of sweep points to 4
         time.sleep(0.1)
         self.instrument.write('sour:del 0.001') # set the delay between pulses to 1ms
         time.sleep(0.1)
@@ -198,30 +198,6 @@ class PulsedIVTest:
     def set_buffer_size(self, size=DEFAULT_BUFFER_SIZE):
         self.instrument.write(f'TRAC:POIN {size}')
         time.sleep(SETUP_DELAY)
-
-    def setup_trigger_link(self):
-        self.instrument.write('*RST')
-        time.sleep(0.5)  # Wait for reset to complete
-        self.instrument.write(':TRIG:CLE') # clear the trigger link
-        time.sleep(0.1)
-        self.instrument.write('ARM:DIR ACC') # set the arm direction to accept
-        time.sleep(0.1)
-        self.instrument.write('ARM:COUN 1') # perform 1 scan
-        time.sleep(0.1)
-        self.instrument.write('ARM:SOUR IMM') # immediately go to next layer
-        time.sleep(0.1)
-        #self.instrument.write('arm:outp none')
-        self.instrument.write('TRIG:DIR ACC') # set the trigger direction to accept
-        time.sleep(0.1)
-        self.instrument.write('TRIG:COUN 1') # perform 1 scan
-        time.sleep(0.1)
-        self.instrument.write(':TRIG:SOUR TLIN') # set the trigger source to be the trigger link
-        time.sleep(0.1)
-        self.instrument.write(':TRIG:OUTP SOUR') # output trigger after source
-        time.sleep(0.1)
-        self.instrument.write(':TRIG:ILIN 1') # set trigger link line #1 to be the external trigger
-        time.sleep(0.1)
-        # enable external trigger
 
     def setup_immediate_trigger(self):
         self.instrument.write(':SOUR:EXTR:ENABLE OFF') # turn off external trigger
@@ -351,11 +327,13 @@ class PulsedIVTest:
         time.sleep(0.1)
         self.instrument.write('trig:sour tlink')
         time.sleep(0.1)
-        self.instrument.write('trig:dir sour')
+        #self.instrument.write('trig:sour ext')
+        #time.sleep(0.1)
+        self.instrument.write('trig:dir acc')
         time.sleep(0.1)
         self.instrument.write('trig:olin 2')
         time.sleep(0.1)
-        self.instrument.write('trig:ilin 1')
+        self.instrument.write('trig:ilin 5')
         time.sleep(0.1)
         self.instrument.write('trig:outp del')
         time.sleep(0.1)
@@ -477,7 +455,7 @@ class PulsedIVTest:
         print(f'Data 2182A: {qdata}')
 
     def getDCData(self):
-        current = [0,0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0.01]
+        current = [0,0.0033333333333333333333333333333333333333333,0.0066666666666666666666666666666666666666666666666,0.01]
         self.instrument.write(':SYST:COMM:SERIal:SEND ":trac:data?"')
         time.sleep(0.2)
         data = str(self.instrument.query(':SYST:COMM:SERIal:ENT?'))
@@ -566,13 +544,25 @@ class PulsedIVTest:
         #self.verifyDCSweepSetup()
         self.armDCSweep()
         time.sleep(2)
-        self.runDCSweep()
+        print('Waiting for external trigger to run DC Sweep...')
+        #self.runDCSweep()
         time.sleep(2)
         #self.getDCData()
         #self.printDCData()
-        self.graphDCData()
-        self.undo_tryfast()
-        self.close()
+        #self.graphDCData()
+        do_continue = input('Would you like to continue? (y/n): \n').lower()
+        if do_continue == 'y':
+            self.instrument.write('sour:swe:abort')
+            time.sleep(0.1)
+            self.getDCData()
+            self.printDCData()
+            self.graphDCData()
+            self.close()
+        elif do_continue == 'n':
+            print('Aborting DC Sweep..')
+            self.abortDCSweep()
+            self.undo_tryfast()
+            self.close()
 
     def runPulsedIVProgram(self):
         self.setup_sweep()
